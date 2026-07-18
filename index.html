@@ -1,16 +1,21 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PRE ONE DAY TURNAMENT KEP - Monitoring</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="./css/base.css">
     <link rel="stylesheet" href="./css/public.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%232ecc71'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='white'>⚽</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%232ecc71'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='white'>⚽</text></svg>">
 </head>
+
 <body class="public-page">
     <div id="app">
         <div class="loading-state" id="initial-loading">
@@ -75,7 +80,9 @@
                     tournament = await fetchTournament("pre-one-day-turnament-kep");
                 }
 
-                areas = await fetchAreas(tournament.id);
+                areas = (await fetchAreas(tournament.id)).map(area =>
+                    area.area_number === 1 ? { ...area, name: "FUTSAL" } : area
+                );
                 const areaIds = areas.map(a => a.id);
                 teams = await fetchAllTeams(areaIds);
                 matches = await fetchAllMatches(areaIds);
@@ -131,7 +138,6 @@
                 lastUpdate = new Date();
                 updateMatchCard(m);
                 renderChampions();
-                renderStats();
                 updateLastUpdate();
             } else if (table === "teams") {
                 const t = payload.new;
@@ -182,7 +188,6 @@
                             <div>
                                 <div class="public-kicker">Live Tournament Control</div>
                                 <h1>${escapeHtml(APP_CONFIG.eventName)}</h1>
-                                <div class="public-subtitle">Bagan pertandingan futsal lintas area</div>
                             </div>
                         </div>
                         <div class="public-header-actions">
@@ -191,8 +196,8 @@
                                 <span class="connection-dot"></span>
                                 <span id="conn-text">Live</span>
                             </span>
+                            <span id="last-update-label">Update: <span id="last-update">${formatTimeWIB(lastUpdate)}</span></span>
                             <button class="btn btn-small btn-secondary" id="theme-button" onclick="window.toggleTheme()" title="Aktifkan light mode">LIGHT</button>
-                            <button class="btn btn-small btn-secondary" id="perspective-button" onclick="window.togglePerspective()" title="Aktifkan perspektif 3D">3D <span class="btn-label">PERSPEKTIF</span></button>
                             <button class="btn btn-small btn-secondary" id="display-button" onclick="window.toggleDisplayMode()" title="Mode display">TV DISPLAY</button>
                             <button class="btn btn-small btn-secondary" onclick="window.toggleFullscreen()" title="Layar penuh">[ ]</button>
                             <button class="btn btn-small btn-secondary" onclick="window.refreshData()" title="Muat ulang">R</button>
@@ -200,74 +205,29 @@
                     </div>
                 </header>
 
-                <div class="monitor-toolbar">
-                    <div class="stats-bar" id="stats-bar"></div>
-                    <div class="filter-bar" id="filter-bar">
-                        <select id="filter-area" onchange="window.applyFilter()">
-                            <option value="all">Semua Area</option>
-                            ${areas.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join("")}
-                        </select>
-                        <select id="filter-status" onchange="window.applyFilter()">
-                            <option value="all">Semua Status</option>
-                            <option value="not_started">Belum Dimulai</option>
-                            <option value="live">Berlangsung</option>
-                            <option value="finished">Selesai</option>
-                        </select>
-                        <input type="text" id="filter-search" placeholder="Cari nama tim..." oninput="window.applyFilter()">
-                        <span id="last-update-label">Update: <span id="last-update">${formatTimeWIB(lastUpdate)}</span></span>
-                    </div>
-                </div>
 
                 <div id="areas-container"></div>
-                <div class="champions-section" id="champions-section"></div>
             `;
 
-            renderStats();
-            renderChampions();
             renderAllBrackets();
+            renderChampions();
             updateThemeControl();
             updateDisplayControl();
             document.body.classList.toggle("view-3d", perspectiveMode);
             const perspectiveButton = document.getElementById("perspective-button");
             if (perspectiveButton) perspectiveButton.classList.toggle("is-active", perspectiveMode);
-            document.getElementById("filter-area").value = filterArea;
-            document.getElementById("filter-status").value = filterStatus;
-            document.getElementById("filter-search").value = searchQuery;
+
             monitorConnection();
         }
 
-        function renderStats() {
-            const el = document.getElementById("stats-bar");
-            if (!el) return;
-
-            let totalFinished = 0;
-            let totalLive = 0;
-            let totalNotStarted = 0;
-
-            for (const m of matches) {
-                if (m.status === "finished") totalFinished++;
-                else if (m.status === "live") totalLive++;
-                else totalNotStarted++;
-            }
-
-            el.innerHTML = `
-                <div class="stat-item">Total Area: <strong>${areas.length}</strong></div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">Total Tim: <strong>${teams.length}</strong></div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">Total Pertandingan: <strong>${matches.length}</strong></div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">Selesai: <strong style="color:var(--color-success)">${totalFinished}</strong></div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">Berlangsung: <strong style="color:var(--color-live)">${totalLive}</strong></div>
-                <div class="stat-divider"></div>
-                <div class="stat-item">Belum Dimulai: <strong style="color:var(--color-text-muted)">${totalNotStarted}</strong></div>
-            `;
-        }
 
         function renderChampions() {
             const el = document.getElementById("champions-section");
             if (!el) return;
+
+            const totalFinished = matches.filter(m => m.status === "finished").length;
+            const totalLive = matches.filter(m => m.status === "live").length;
+            const totalNotStarted = matches.length - totalFinished - totalLive;
 
             let rows = "";
             for (const area of areas) {
@@ -297,18 +257,46 @@
             }
 
             el.innerHTML = `
-                <table class="champions-table">
-                    <thead>
-                        <tr>
-                            <th>Area</th>
-                            <th>Juara 1</th>
-                            <th>Juara 2</th>
-                            <th>Juara 3</th>
-                            <th>Progress</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
+                <div class="summary-stats-grid">
+                    <div class="summary-stat-card">
+                        <span class="summary-stat-label">Total Area</span>
+                        <strong class="summary-stat-value">${areas.length}</strong>
+                    </div>
+                    <div class="summary-stat-card">
+                        <span class="summary-stat-label">Total Tim</span>
+                        <strong class="summary-stat-value">${teams.length}</strong>
+                    </div>
+                    <div class="summary-stat-card">
+                        <span class="summary-stat-label">Total Pertandingan</span>
+                        <strong class="summary-stat-value">${matches.length}</strong>
+                    </div>
+                    <div class="summary-stat-card summary-stat-finished">
+                        <span class="summary-stat-label">Selesai</span>
+                        <strong class="summary-stat-value">${totalFinished}</strong>
+                    </div>
+                    <div class="summary-stat-card summary-stat-live">
+                        <span class="summary-stat-label">Berlangsung</span>
+                        <strong class="summary-stat-value">${totalLive}</strong>
+                    </div>
+                    <div class="summary-stat-card summary-stat-pending">
+                        <span class="summary-stat-label">Belum Dimulai</span>
+                        <strong class="summary-stat-value">${totalNotStarted}</strong>
+                    </div>
+                </div>
+                <div class="summary-table-panel">
+                    <table class="champions-table">
+                        <thead>
+                            <tr>
+                                <th>Area</th>
+                                <th>Juara 1</th>
+                                <th>Juara 2</th>
+                                <th>Juara 3</th>
+                                <th>Progress</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
             `;
         }
 
@@ -317,9 +305,11 @@
             if (!container) return;
 
             let html = "";
+            let visibleCount = 0;
             for (const [areaIndex, area] of areas.entries()) {
                 if (filterArea !== "all" && filterArea !== area.id) continue;
 
+                visibleCount++;
                 const areaMatches = allMatches[area.id] || [];
                 const finished = areaMatches.filter(m => m.status === "finished").length;
                 const progress = Math.round((finished / 8) * 100);
@@ -330,7 +320,6 @@
                             <div class="area-title-group">
                                 <span class="area-seed">${String(areaIndex + 1).padStart(2, "0")}</span>
                                 <div>
-                                    <div class="area-kicker">Arena Bracket</div>
                                     <h2>${escapeHtml(area.name)}</h2>
                                 </div>
                             </div>
@@ -340,12 +329,18 @@
                 `;
             }
 
+            if (filterArea === "all" && visibleCount > 0) {
+                html += `<section class="champions-section area-summary-panel" id="champions-section"></section>`;
+            }
+
             container.innerHTML = html;
 
             for (const area of areas) {
                 if (filterArea !== "all" && filterArea !== area.id) continue;
                 renderBracketSection(area.id);
             }
+
+            renderChampions();
         }
 
         function renderBracketSection(areaId) {
@@ -381,26 +376,20 @@
         }
 
         // --- Global functions ---
-        window.applyFilter = function() {
-            filterArea = document.getElementById("filter-area").value;
-            filterStatus = document.getElementById("filter-status").value;
-            searchQuery = document.getElementById("filter-search").value;
-            renderAllBrackets();
-        };
 
-        window.toggleDisplayMode = function() {
+        window.toggleDisplayMode = function () {
             displayMode = !displayMode;
             document.body.classList.toggle("display-mode", displayMode);
             if (displayMode) {
                 if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(() => {});
+                    document.documentElement.requestFullscreen().catch(() => { });
                 }
                 promptFocusArea();
             } else {
                 document.body.classList.remove("display-focus-area");
                 focusArea = null;
                 if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(() => {});
+                    document.exitFullscreen().catch(() => { });
                 }
             }
             updateDisplayControl();
@@ -415,7 +404,7 @@
             button.title = displayMode ? "Keluar dari mode TV" : "Aktifkan mode TV";
         }
 
-        window.togglePerspective = function() {
+        window.togglePerspective = function () {
             perspectiveMode = !perspectiveMode;
             document.body.classList.toggle("view-3d", perspectiveMode);
             const button = document.getElementById("perspective-button");
@@ -435,7 +424,7 @@
             button.title = lightMode ? "Aktifkan dark mode" : "Aktifkan light mode";
         }
 
-        window.toggleTheme = function() {
+        window.toggleTheme = function () {
             lightMode = !lightMode;
             try {
                 localStorage.setItem("pre-odt-theme", lightMode ? "light" : "dark");
@@ -468,7 +457,7 @@
             document.body.appendChild(div);
         }
 
-        window.setDisplayMode = function(mode) {
+        window.setDisplayMode = function (mode) {
             if (mode === "focus") {
                 document.getElementById("focus-area-picker").style.display = "block";
             } else {
@@ -478,7 +467,7 @@
             }
         };
 
-        window.setFocusArea = function(areaId) {
+        window.setFocusArea = function (areaId) {
             focusArea = areaId;
             document.body.classList.add("display-focus-area");
             renderAllBrackets();
@@ -486,15 +475,15 @@
             if (modal) modal.remove();
         };
 
-        window.toggleFullscreen = function() {
+        window.toggleFullscreen = function () {
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {});
+                document.documentElement.requestFullscreen().catch(() => { });
             } else {
-                document.exitFullscreen().catch(() => {});
+                document.exitFullscreen().catch(() => { });
             }
         };
 
-        window.refreshData = async function() {
+        window.refreshData = async function () {
             if (refreshInProgress) return;
             refreshInProgress = true;
             try {
@@ -509,7 +498,6 @@
                     allMatches[m.area_id].push(m);
                 }
                 lastUpdate = new Date();
-                renderStats();
                 renderChampions();
                 renderAllBrackets();
                 updateLastUpdate();
@@ -592,4 +580,5 @@
         });
     </script>
 </body>
+
 </html>
