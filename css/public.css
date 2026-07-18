@@ -202,37 +202,58 @@
 }
 
 /* Bracket layout */
-.bracket-container {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr 1.5fr 1fr;
-    gap: 16px;
-    overflow-x: auto;
+.bracket-svg-container {
+    position: relative;
 }
 
-.bracket-col {
+.bracket {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0;
+    min-height: 200px;
+}
+
+.bracket-round {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    justify-content: space-around;
     min-width: 160px;
+    flex: 1;
+    padding: 0 4px;
+    position: relative;
 }
 
-.bracket-col-header {
-    font-size: 11px;
+.bracket-round-header {
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--color-text-muted);
-    padding: 4px 0;
+    padding: 6px 8px;
     border-bottom: 1px solid var(--color-border);
-    margin-bottom: 4px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.round-podium {
+    min-width: 140px;
+    flex: 0.7;
+}
+
+.match-wrapper {
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
 }
 
 /* Match card */
 .match-card {
     background: var(--color-surface);
     border-radius: var(--radius);
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid var(--color-border);
+    width: 100%;
     transition: border-color 0.2s;
 }
 
@@ -244,27 +265,27 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .match-code {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     color: var(--color-text-muted);
 }
 
 .match-badge {
-    font-size: 9px;
-    padding: 1px 8px;
+    font-size: 8px;
+    padding: 1px 6px;
     border-radius: 10px;
     font-weight: 600;
     text-transform: uppercase;
 }
 
 .match-stage {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--color-text-muted);
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 
 .team-row {
@@ -272,7 +293,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 2px 0;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .team-winner {
@@ -293,6 +314,7 @@
 .team-score {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    font-size: 13px;
 }
 
 .penalty-note {
@@ -303,18 +325,13 @@
 }
 
 /* Podium */
-.podium-container {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
 .podium-item {
     background: var(--color-surface);
     border-radius: var(--radius);
     padding: 10px 12px;
     border: 1px solid var(--color-border);
     text-align: center;
+    margin: 4px 0;
 }
 
 .podium-label {
@@ -325,7 +342,7 @@
 }
 
 .podium-team {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -375,11 +392,16 @@
 }
 
 .display-mode .team-row {
-    font-size: 15px;
+    font-size: 14px;
 }
 
 .display-mode .team-score {
-    font-size: 16px;
+    font-size: 15px;
+}
+
+.display-mode .bracket-round-header {
+    font-size: 12px;
+    padding: 8px;
 }
 
 .display-focus-area .area-section:not(.area-focused) {
@@ -388,12 +410,27 @@
 
 /* Responsive */
 @media (max-width: 1024px) {
-    .bracket-container {
-        grid-template-columns: 1fr 1fr;
+    .bracket {
+        flex-wrap: wrap;
     }
 
-    .bracket-col:last-child {
-        grid-column: span 2;
+    .bracket-round {
+        min-width: 45%;
+        flex: 1 1 45%;
+    }
+
+    .round-podium {
+        flex: 1 1 100%;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .round-podium .podium-item {
+        flex: 1;
+        min-width: 120px;
+        max-width: 180px;
     }
 }
 
@@ -415,13 +452,18 @@
         padding: 12px 12px;
     }
 
-    .bracket-container {
-        grid-template-columns: 1fr;
+    .bracket {
         overflow-x: auto;
+        flex-wrap: nowrap;
     }
 
-    .bracket-col {
-        min-width: 200px;
+    .bracket-round {
+        min-width: 180px;
+        flex: 0 0 180px;
+    }
+
+    .bracket-svg-container {
+        overflow-x: auto;
     }
 
     .filter-bar input {
@@ -456,6 +498,10 @@
     }
 
     .team-row {
-        font-size: 12px;
+        font-size: 11px;
+    }
+
+    .match-card {
+        padding: 6px 8px;
     }
 }
