@@ -1,0 +1,9 @@
+graphify-out/
+.git/
+.gitignore
+.graphifyignore
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

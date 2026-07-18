@@ -1,0 +1,555 @@
+/* ============================================
+   Admin Page — admin.html
+   ============================================ */
+
+/* Login */
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: var(--color-bg);
+}
+
+.login-card {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.login-card h1 {
+    font-size: 18px;
+    text-align: center;
+    color: var(--color-primary);
+    margin-bottom: 4px;
+}
+
+.login-card h2 {
+    font-size: 14px;
+    text-align: center;
+    color: var(--color-text-muted);
+    margin-bottom: 24px;
+    font-weight: 400;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.login-error {
+    background: rgba(231,76,60,0.15);
+    color: var(--color-danger);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    font-size: 12px;
+    margin-bottom: 12px;
+    display: none;
+}
+
+.login-card .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+    font-size: 15px;
+}
+
+/* Admin dashboard */
+.admin-header {
+    background: var(--color-surface);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.admin-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-header-left h1 {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.admin-area-badge {
+    background: var(--color-primary);
+    color: #fff;
+    padding: 2px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--color-text-muted);
+    flex-wrap: wrap;
+}
+
+.admin-header-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* Area picker */
+.area-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 40px 20px;
+}
+
+.area-picker h2 {
+    font-size: 20px;
+    margin-bottom: 24px;
+    color: var(--color-text);
+}
+
+.area-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-width: 500px;
+    width: 100%;
+}
+
+.area-btn {
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 20px 16px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-text);
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.area-btn:hover {
+    border-color: var(--color-primary);
+    background: var(--color-surface-light);
+}
+
+.area-btn-active {
+    border-color: var(--color-primary);
+    background: rgba(46,204,113,0.15);
+    color: var(--color-primary);
+}
+
+/* Admin tabs */
+.admin-tabs {
+    display: flex;
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    overflow-x: auto;
+}
+
+.admin-tab {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: none;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.admin-tab:hover {
+    color: var(--color-text);
+}
+
+.admin-tab-active {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+}
+
+/* Admin content */
+.admin-content {
+    padding: 20px 24px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Score input */
+.match-input-card {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--color-border);
+}
+
+.match-input-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.match-input-header h3 {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.match-input-header .match-code-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+}
+
+.match-input-stage {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+}
+
+.score-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.score-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.score-row label {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.score-row input[type="number"] {
+    width: 64px;
+    padding: 6px 8px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.score-row input[type="number"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+/* Status buttons */
+.status-buttons {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.status-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.status-btn-not-started {
+    background: rgba(149,165,166,0.15);
+    color: var(--color-text-muted);
+    border: 1px solid transparent;
+}
+
+.status-btn-not-started:hover,
+.status-btn-not-started.status-btn-active {
+    background: rgba(149,165,166,0.3);
+    border-color: var(--color-text-muted);
+}
+
+.status-btn-live {
+    background: rgba(243,156,18,0.15);
+    color: var(--color-live);
+    border: 1px solid transparent;
+}
+
+.status-btn-live:hover,
+.status-btn-live.status-btn-active {
+    background: rgba(243,156,18,0.3);
+    border-color: var(--color-live);
+}
+
+.status-btn-finished {
+    background: rgba(46,204,113,0.15);
+    color: var(--color-success);
+    border: 1px solid transparent;
+}
+
+.status-btn-finished:hover,
+.status-btn-finished.status-btn-active {
+    background: rgba(46,204,113,0.3);
+    border-color: var(--color-success);
+}
+
+.status-btn-active {
+    border-color: currentColor;
+}
+
+/* Penalty section */
+.penalty-section {
+    background: rgba(231,76,60,0.1);
+    border: 1px solid rgba(231,76,60,0.2);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.penalty-section h4 {
+    font-size: 12px;
+    color: var(--color-danger);
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.penalty-inputs {
+    display: flex;
+    gap: 16px;
+}
+
+.penalty-inputs .score-row {
+    gap: 6px;
+}
+
+.penalty-inputs input[type="number"] {
+    width: 56px;
+}
+
+/* Match not available */
+.match-unavailable {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px dashed var(--color-border);
+    text-align: center;
+}
+
+.match-unavailable p {
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+/* Teams tab */
+.team-edit-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.team-edit-row .seed-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    min-width: 48px;
+}
+
+.team-edit-row input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    color: var(--color-text);
+    font-size: 14px;
+}
+
+.team-edit-row input[type="text"]:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.team-edit-row .char-count {
+    font-size: 10px;
+    color: var(--color-text-muted);
+    min-width: 24px;
+    text-align: right;
+}
+
+.team-edit-row .char-count.warning {
+    color: var(--color-live);
+}
+
+.team-edit-row .char-count.danger {
+    color: var(--color-danger);
+}
+
+/* Audit log */
+.audit-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.audit-item {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    font-size: 12px;
+}
+
+.audit-item .audit-time {
+    color: var(--color-text-muted);
+    font-size: 11px;
+}
+
+.audit-item .audit-operator {
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.audit-item .audit-match {
+    color: var(--color-text-muted);
+}
+
+.audit-item .audit-action {
+    margin-top: 4px;
+    color: var(--color-text);
+}
+
+/* Settings */
+.settings-section {
+    margin-bottom: 24px;
+}
+
+.settings-section h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--color-text);
+}
+
+.settings-section p {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    margin-bottom: 12px;
+}
+
+.settings-section .form-group input[type="text"] {
+    max-width: 300px;
+}
+
+/* Responsive admin */
+@media (max-width: 768px) {
+    .admin-header {
+        padding: 8px 12px;
+    }
+
+    .admin-header-left h1 {
+        font-size: 13px;
+    }
+
+    .admin-content {
+        padding: 12px 12px;
+    }
+
+    .area-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .area-btn {
+        padding: 14px 10px;
+        font-size: 14px;
+    }
+
+    .admin-tabs {
+        padding: 0 8px;
+    }
+
+    .admin-tab {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .match-input-card {
+        padding: 12px;
+    }
+
+    .score-row input[type="number"] {
+        width: 56px;
+    }
+
+    .audit-item {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .area-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .admin-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+    }
+
+    .admin-header-actions {
+        justify-content: flex-end;
+    }
+
+    .admin-header-info {
+        font-size: 11px;
+    }
+
+    .score-row {
+        flex-wrap: wrap;
+    }
+
+    .status-buttons {
+        flex-wrap: wrap;
+    }
+}

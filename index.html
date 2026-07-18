@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRE ONE DAY TURNAMENT KEP — Monitoring</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/public.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%232ecc71'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='white'>⚽</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <div class="loading-state" id="initial-loading">
+            <div class="loading-spinner" style="width:36px;height:36px"></div>
+            <p>Memuat data pertandingan...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { APP_CONFIG } from "./js/config.js";
+        import { supabase } from "./js/supabase-client.js";
+        import {
+            fetchTournament, fetchAreas, fetchAllTeams, fetchAllMatches
+        } from "./js/data-service.js";
+        import { subscribeAll, unsubscribeAll } from "./js/realtime-service.js";
+        import { renderBracket } from "./js/bracket-engine.js";
+        import {
+            formatTimeWIB, escapeHtml
+        } from "./js/utils.js";
+
+        // --- State ---
+        let tournament = null;
+        let areas = [];
+        let teams = [];
+        let matches = [];
+        let allMatches = {};
+        let allTeams = {};
+        let filterArea = "all";
+        let filterStatus = "all";
+        let searchQuery = "";
+        let displayMode = false;
+        let focusArea = null;
+        let lastUpdate = null;
+
+        const root = document.getElementById("app");
+
+        // --- Init ---
+        async function init() {
+            try {
+                const allTournaments = await supabase
+                    .from("tournaments")
+                    .select("*")
+                    .limit(1)
+                    .single();
+
+                if (allTournaments.error && allTournaments.error.code === 'PGRST116') {
+                    tournament = await fetchTournament("pre-one-day-turnament-kep");
+                } else if (allTournaments.data) {
+                    tournament = allTournaments.data;
+                } else {
+                    tournament = await fetchTournament("pre-one-day-turnament-kep");
+                }
+
+                areas = await fetchAreas(tournament.id);
+                const areaIds = areas.map(a => a.id);
+                teams = await fetchAllTeams(areaIds);
+                matches = await fetchAllMatches(areaIds);
+
+                for (const t of teams) allTeams[t.id] = t;
+                for (const m of matches) {
+                    if (!allMatches[m.area_id]) allMatches[m.area_id] = [];
+                    allMatches[m.area_id].push(m);
+                }
+
+                lastUpdate = new Date();
+                renderFull();
+
+                subscribeAll((table, payload) => {
+                    handleRealtimeChange(table, payload);
+                });
+
+            } catch (err) {
+                console.error(err);
+                showError("Data gagal dimuat. Periksa koneksi lalu coba kembali.");
+            }
+        }
+
+        function handleRealtimeChange(table, payload) {
+            if (payload.eventType === "DELETE") {
+                if (table === "matches" && payload.old) {
+                    const m = payload.old;
+                    if (allMatches[m.area_id]) {
+                        allMatches[m.area_id] = allMatches[m.area_id].filter(x => x.id !== m.id);
+                    }
+                }
+                lastUpdate = new Date();
+                renderFull();
+                return;
+            }
+
+            if (table === "matches") {
+                const m = payload.new;
+                if (m && allMatches[m.area_id]) {
+                    const idx = allMatches[m.area_id].findIndex(x => x.id === m.id);
+                    if (idx >= 0) {
+                        allMatches[m.area_id][idx] = m;
+                    } else {
+                        allMatches[m.area_id].push(m);
+                    }
+                } else if (m) {
+                    allMatches[m.area_id] = [m];
+                }
+                lastUpdate = new Date();
+                updateMatchCard(m);
+                renderChampions();
+                renderStats();
+                updateLastUpdate();
+            } else if (table === "teams") {
+                const t = payload.new;
+                if (t) {
+                    allTeams[t.id] = t;
+                    const idx = teams.findIndex(x => x.id === t.id);
+                    if (idx >= 0) teams[idx] = t;
+                    else teams.push(t);
+                }
+                lastUpdate = new Date();
+                renderFull();
+                updateLastUpdate();
+            }
+        }
+
+        function updateMatchCard(match) {
+            if (!match || filterArea !== "all" && filterArea !== match.area_id) return;
+            const section = document.querySelector(`.area-section[data-area-id="${match.area_id}"]`);
+            if (section) {
+                const oldContainer = section.querySelector(".bracket-container");
+                if (oldContainer) oldContainer.remove();
+                renderBracketSection(match.area_id);
+            }
+        }
+
+        function showError(msg) {
+            root.innerHTML = `
+                <div class="error-state">
+                    <h3>Gagal Memuat Data</h3>
+                    <p>${escapeHtml(msg)}</p>
+                    <button class="btn btn-primary" onclick="location.reload()">Coba Lagi</button>
+                </div>
+            `;
+        }
+
+        function updateLastUpdate() {
+            const el = document.getElementById("last-update");
+            if (el) el.textContent = formatTimeWIB(lastUpdate);
+        }
+
+        // --- Render Full ---
+        function renderFull() {
+            root.innerHTML = `
+                <header class="public-header">
+                    <div class="public-header-top">
+                        <div class="public-header-title">
+                            <span class="icon">⚽</span>
+                            <div>
+                                <h1>${escapeHtml(APP_CONFIG.eventName)}</h1>
+                                <div class="public-subtitle">Monitoring Pertandingan Futsal</div>
+                            </div>
+                        </div>
+                        <div class="public-header-actions">
+                            <span class="live-badge"><span style="width:6px;height:6px;border-radius:50%;background:var(--color-success);display:inline-block"></span> LIVE UPDATE</span>
+                            <span class="connection-bar connection-live" id="conn-bar">
+                                <span class="connection-dot"></span>
+                                <span id="conn-text">Live</span>
+                            </span>
+                            <button class="btn btn-small btn-secondary" onclick="window.toggleDisplayMode()" title="Mode Display">🖥 MODE DISPLAY</button>
+                            <button class="btn btn-small btn-secondary" onclick="window.toggleFullscreen()" title="Fullscreen">⛶</button>
+                            <button class="btn btn-small btn-secondary" onclick="window.refreshData()" title="Refresh">↻</button>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="stats-bar" id="stats-bar"></div>
+                <div class="champions-section" id="champions-section"></div>
+                <div class="filter-bar" id="filter-bar">
+                    <select id="filter-area" onchange="window.applyFilter()">
+                        <option value="all">Semua Area</option>
+                        ${areas.map(a => `<option value="${a.id}">${escapeHtml(a.name)}</option>`).join("")}
+                    </select>
+                    <select id="filter-status" onchange="window.applyFilter()">
+                        <option value="all">Semua Status</option>
+                        <option value="not_started">Belum Dimulai</option>
+                        <option value="live">Berlangsung</option>
+                        <option value="finished">Selesai</option>
+                    </select>
+                    <input type="text" id="filter-search" placeholder="Cari nama tim..." oninput="window.applyFilter()">
+                    <span style="font-size:12px;color:var(--color-text-muted);margin-left:auto" id="last-update-label">Update: <span id="last-update">${formatTimeWIB(lastUpdate)}</span></span>
+                </div>
+
+                <div id="areas-container"></div>
+            `;
+
+            renderStats();
+            renderChampions();
+            renderAllBrackets();
+            monitorConnection();
+        }
+
+        function renderStats() {
+            const el = document.getElementById("stats-bar");
+            if (!el) return;
+
+            let totalFinished = 0;
+            let totalLive = 0;
+            let totalNotStarted = 0;
+
+            for (const m of matches) {
+                if (m.status === "finished") totalFinished++;
+                else if (m.status === "live") totalLive++;
+                else totalNotStarted++;
+            }
+
+            el.innerHTML = `
+                <div class="stat-item">Total Area: <strong>${areas.length}</strong></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">Total Tim: <strong>${teams.length}</strong></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">Total Pertandingan: <strong>${matches.length}</strong></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">Selesai: <strong style="color:var(--color-success)">${totalFinished}</strong></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">Berlangsung: <strong style="color:var(--color-live)">${totalLive}</strong></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item">Belum Dimulai: <strong style="color:var(--color-text-muted)">${totalNotStarted}</strong></div>
+            `;
+        }
+
+        function renderChampions() {
+            const el = document.getElementById("champions-section");
+            if (!el) return;
+
+            let rows = "";
+            for (const area of areas) {
+                const areaMatches = allMatches[area.id] || [];
+                const finished = areaMatches.filter(m => m.status === "finished").length;
+                const progress = Math.round((finished / 8) * 100);
+
+                const finalMatch = areaMatches.find(m => m.match_code === "F");
+                const tpMatch = areaMatches.find(m => m.match_code === "TP");
+
+                const champ = finalMatch && finalMatch.winner_team_id ? allTeams[finalMatch.winner_team_id] : null;
+                const runner = finalMatch && finalMatch.loser_team_id ? allTeams[finalMatch.loser_team_id] : null;
+                const third = tpMatch && tpMatch.winner_team_id ? allTeams[tpMatch.winner_team_id] : null;
+
+                rows += `
+                    <tr>
+                        <td><strong>${escapeHtml(area.name)}</strong></td>
+                        <td class="${champ ? 'champion-gold' : ''}">${champ ? escapeHtml(champ.name) : 'Belum Ditentukan'}</td>
+                        <td class="${runner ? 'champion-silver' : ''}">${runner ? escapeHtml(runner.name) : 'Belum Ditentukan'}</td>
+                        <td class="${third ? 'champion-bronze' : ''}">${third ? escapeHtml(third.name) : 'Belum Ditentukan'}</td>
+                        <td>
+                            <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${progress}%"></div></div>
+                            ${progress}%
+                        </td>
+                    </tr>
+                `;
+            }
+
+            el.innerHTML = `
+                <table class="champions-table">
+                    <thead>
+                        <tr>
+                            <th>Area</th>
+                            <th>Juara 1</th>
+                            <th>Juara 2</th>
+                            <th>Juara 3</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function renderAllBrackets() {
+            const container = document.getElementById("areas-container");
+            if (!container) return;
+
+            let html = "";
+            for (const area of areas) {
+                if (filterArea !== "all" && filterArea !== area.id) continue;
+
+                const areaMatches = allMatches[area.id] || [];
+                const finished = areaMatches.filter(m => m.status === "finished").length;
+                const progress = Math.round((finished / 8) * 100);
+
+                html += `
+                    <section class="area-section ${focusArea === area.id ? 'area-focused' : ''}" data-area-id="${area.id}">
+                        <div class="area-header">
+                            <h2>${escapeHtml(area.name)}</h2>
+                            <span class="area-progress">${finished}/8 pertandingan (${progress}%)</span>
+                        </div>
+                    </section>
+                `;
+            }
+
+            container.innerHTML = html;
+
+            for (const area of areas) {
+                if (filterArea !== "all" && filterArea !== area.id) continue;
+                renderBracketSection(area.id);
+            }
+        }
+
+        function renderBracketSection(areaId) {
+            const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
+            if (!section) return;
+
+            const areaTeams = teams.filter(t => t.area_id === areaId);
+            const areaMatches = allMatches[areaId] || [];
+
+            let filtered = areaMatches;
+            if (filterStatus !== "all") {
+                filtered = filtered.filter(m => m.status === filterStatus);
+            }
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                const matchedTeamIds = areaTeams.filter(t => t.name.toLowerCase().includes(q)).map(t => t.id);
+                filtered = areaMatches.filter(m =>
+                    (m.team1_id && matchedTeamIds.includes(m.team1_id)) ||
+                    (m.team2_id && matchedTeamIds.includes(m.team2_id))
+                );
+            }
+
+            const area = areas.find(a => a.id === areaId);
+            if (area && filtered.length > 0) {
+                const bracketEl = renderBracket(area, areaTeams, filtered);
+                section.appendChild(bracketEl);
+            } else if (area) {
+                const bracketEl = renderBracket(area, areaTeams, areaMatches);
+                section.appendChild(bracketEl);
+            }
+        }
+
+        // --- Global functions ---
+        window.applyFilter = function() {
+            filterArea = document.getElementById("filter-area").value;
+            filterStatus = document.getElementById("filter-status").value;
+            searchQuery = document.getElementById("filter-search").value;
+            renderAllBrackets();
+        };
+
+        window.toggleDisplayMode = function() {
+            displayMode = !displayMode;
+            document.body.classList.toggle("display-mode", displayMode);
+            if (displayMode) {
+                promptFocusArea();
+            } else {
+                document.body.classList.remove("display-focus-area");
+            }
+        };
+
+        function promptFocusArea() {
+            const div = document.createElement("div");
+            div.className = "modal-overlay";
+            div.id = "focus-modal";
+            div.innerHTML = `
+                <div class="modal-content">
+                    <h2>Mode Display</h2>
+                    <p>Pilih mode tampilan:</p>
+                    <div style="display:flex;gap:8px;margin:16px 0">
+                        <button class="btn btn-primary" onclick="window.setDisplayMode('all')" style="flex:1">Semua Area</button>
+                        <button class="btn btn-secondary" onclick="window.setDisplayMode('focus')" style="flex:1">Fokus Area</button>
+                    </div>
+                    <div id="focus-area-picker" style="display:none">
+                        <p style="margin-bottom:8px">Pilih area yang difokuskan:</p>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px">
+                            ${areas.map(a => `<button class="btn btn-secondary btn-small" onclick="window.setFocusArea('${a.id}')">${escapeHtml(a.name)}</button>`).join("")}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(div);
+        }
+
+        window.setDisplayMode = function(mode) {
+            if (mode === "focus") {
+                document.getElementById("focus-area-picker").style.display = "block";
+            } else {
+                focusArea = null;
+                document.body.classList.remove("display-focus-area");
+                document.getElementById("focus-modal").remove();
+            }
+        };
+
+        window.setFocusArea = function(areaId) {
+            focusArea = areaId;
+            document.body.classList.add("display-focus-area");
+            document.querySelectorAll(".area-section").forEach(s => {
+                s.classList.toggle("area-focused", s.dataset.areaId === areaId);
+            });
+            const modal = document.getElementById("focus-modal");
+            if (modal) modal.remove();
+        };
+
+        window.toggleFullscreen = function() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
+            }
+        };
+
+        window.refreshData = async function() {
+            try {
+                const areaIds = areas.map(a => a.id);
+                matches = await fetchAllMatches(areaIds);
+                teams = await fetchAllTeams(areaIds);
+                allTeams = {};
+                allMatches = {};
+                for (const t of teams) allTeams[t.id] = t;
+                for (const m of matches) {
+                    if (!allMatches[m.area_id]) allMatches[m.area_id] = [];
+                    allMatches[m.area_id].push(m);
+                }
+                lastUpdate = new Date();
+                renderStats();
+                renderChampions();
+                renderAllBrackets();
+                updateLastUpdate();
+            } catch (err) {
+                console.error(err);
+                showToast("Data gagal dimuat ulang.", "error");
+            }
+        };
+
+        // --- Toast ---
+        function showToast(msg, type = "info") {
+            const existing = document.querySelector(".toast-container");
+            if (!existing) {
+                const tc = document.createElement("div");
+                tc.className = "toast-container";
+                document.body.appendChild(tc);
+            }
+            const t = document.createElement("div");
+            t.className = "toast toast-" + type;
+            t.textContent = msg;
+            document.querySelector(".toast-container").appendChild(t);
+            setTimeout(() => {
+                t.classList.add("toast-out");
+                setTimeout(() => t.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Connection monitoring ---
+        function monitorConnection() {
+            const bar = document.getElementById("conn-bar");
+            const text = document.getElementById("conn-text");
+            if (!bar) return;
+
+            setInterval(() => {
+                const channels = supabase.getChannels();
+                const hasSub = channels.some(c => c.state === "subscribed");
+                if (hasSub) {
+                    bar.className = "connection-bar connection-live";
+                    text.textContent = "Live";
+                } else {
+                    const hasAny = channels.some(c => c.state === "joining" || c.state === "joined");
+                    if (hasAny) {
+                        bar.className = "connection-bar connection-connecting";
+                        text.textContent = "Menghubungkan";
+                    } else {
+                        bar.className = "connection-bar connection-offline";
+                        text.textContent = "Offline";
+                    }
+                }
+            }, 5000);
+        }
+
+        init();
+
+        setInterval(() => {
+            const connText = document.getElementById("conn-text");
+            if (connText && connText.textContent === "Offline") {
+                window.refreshData();
+            }
+        }, 60000);
+
+        window.addEventListener("beforeunload", () => {
+            unsubscribeAll();
+        });
+    </script>
+</body>
+</html>

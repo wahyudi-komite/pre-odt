@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRE ONE DAY TURNAMENT KEP — Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/base.css">
+    <link rel="stylesheet" href="./css/admin.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%232ecc71'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='white'>⚽</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <div class="loading-state" id="initial-loading">
+            <div class="loading-spinner" style="width:36px;height:36px"></div>
+            <p>Memuat...</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { APP_CONFIG } from "./js/config.js";
+        import { supabase } from "./js/supabase-client.js";
+        import {
+            fetchTournament, fetchAreas, fetchTeams, fetchMatches,
+            fetchAllTeams, fetchAllMatches, fetchAuditLogs,
+            saveMatchResult, resetMatchResult, updateTeamName, resetArea
+        } from "./js/data-service.js";
+        import { subscribeMatches, subscribeTeams, unsubscribeAll } from "./js/realtime-service.js";
+        import {
+            formatWIB, escapeHtml, statusLabel, stageLabel,
+            errorMessage
+        } from "./js/utils.js";
+
+        // --- State ---
+        let tournament = null;
+        let areas = [];
+        let currentArea = null;
+        let teams = [];
+        let matches = [];
+        let auditLogs = [];
+        let operatorName = localStorage.getItem("gfy_opname") || "";
+        let currentTab = "score";
+        let matchVersions = {};
+        let activeChannels = [];
+        let session = null;
+
+        const root = document.getElementById("app");
+
+        // --- Auth ---
+        async function checkSession() {
+            const { data: { session: s }, error } = await supabase.auth.getSession();
+            if (error) {
+                console.error("Session check error:", error);
+                return null;
+            }
+            return s;
+        }
+
+        async function login() {
+            const passInput = document.getElementById("login-password");
+            const errorEl = document.getElementById("login-error");
+            const opInput = document.getElementById("login-opname");
+
+            const email = APP_CONFIG.adminEmail;
+            const password = passInput.value;
+            const opName = opInput.value.trim();
+
+            if (!password) {
+                errorEl.textContent = "Masukkan password admin.";
+                errorEl.style.display = "block";
+                return;
+            }
+
+            if (!opName) {
+                errorEl.textContent = "Masukkan nama operator.";
+                errorEl.style.display = "block";
+                return;
+            }
+
+            errorEl.style.display = "none";
+
+            try {
+                const btn = document.getElementById("login-btn");
+                btn.disabled = true;
+                btn.innerHTML = '<span class="loading-spinner"></span> Masuk...';
+
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) {
+                    if (error.message.includes("Invalid login credentials")) {
+                        throw new Error("Password admin tidak sesuai.");
+                    }
+                    throw error;
+                }
+
+                operatorName = opName;
+                localStorage.setItem("gfy_opname", operatorName);
+                session = data.session;
+
+                showToast("Login berhasil.", "success");
+                await loadAdmin();
+            } catch (err) {
+                console.error(err);
+                errorEl.textContent = errorMessage(err);
+                errorEl.style.display = "block";
+                const btn = document.getElementById("login-btn");
+                btn.disabled = false;
+                btn.innerHTML = "MASUK";
+            }
+        }
+
+        async function logout() {
+            try {
+                await supabase.auth.signOut();
+                session = null;
+                removeAllChannels();
+                renderLogin();
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function removeAllChannels() {
+            for (const ch of activeChannels) {
+                supabase.removeChannel(ch);
+            }
+            activeChannels = [];
+        }
+
+        // --- Login Screen ---
+        function renderLogin() {
+            root.innerHTML = `
+                <div class="login-page">
+                    <div class="login-card">
+                        <h1>${escapeHtml(APP_CONFIG.eventName)}</h1>
+                        <h2>ADMIN PERTANDINGAN</h2>
+                        <div id="login-error" class="login-error"></div>
+                        <div class="form-group">
+                            <label>Nama Admin/Operator</label>
+                            <input type="text" id="login-opname" value="${escapeHtml(operatorName)}" placeholder="Masukkan nama operator" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label>Password Admin</label>
+                            <input type="password" id="login-password" placeholder="Masukkan password" autocomplete="current-password">
+                        </div>
+                        <button class="btn btn-primary" id="login-btn" onclick="window.loginHandler()">MASUK</button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById("login-password").addEventListener("keydown", (e) => {
+                if (e.key === "Enter") login();
+            });
+        }
+
+        window.loginHandler = login;
+
+        // --- Area Picker ---
+        function renderAreaPicker() {
+            root.innerHTML = `
+                <div class="area-picker">
+                    <h2>PILIH AREA PERTANDINGAN</h2>
+                    <div class="area-grid">
+                        ${areas.map(a => `
+                            <button class="area-btn" onclick="window.selectArea('${a.id}')">
+                                ${escapeHtml(a.name)}
+                            </button>
+                        `).join("")}
+                    </div>
+                    <button class="btn btn-secondary btn-small" style="margin-top:24px" onclick="window.logoutHandler()">LOGOUT</button>
+                </div>
+            `;
+
+            const lastArea = localStorage.getItem("gfy_last_area");
+            if (lastArea) {
+                const btn = root.querySelector(`.area-btn[onclick*="${lastArea}"]`);
+                if (btn) {
+                    setTimeout(() => {
+                        showToast("Area terakhir: " + (areas.find(a => a.id === lastArea)?.name || ""), "info");
+                    }, 500);
+                }
+            }
+        }
+
+        window.selectArea = async function(areaId) {
+            if (hasUnsavedChanges()) {
+                if (!confirm("Ada input yang belum disimpan. Pindah area?")) return;
+            }
+
+            currentArea = areas.find(a => a.id === areaId);
+            localStorage.setItem("gfy_last_area", areaId);
+
+            removeAllChannels();
+
+            await loadAreaData(areaId);
+
+            const mChannel = subscribeMatches([areaId], (payload) => {
+                handleMatchUpdate(payload);
+            });
+            activeChannels.push(mChannel);
+
+            const tChannel = subscribeTeams([areaId], (payload) => {
+                handleTeamUpdate(payload);
+            });
+            activeChannels.push(tChannel);
+        };
+
+        window.logoutHandler = logout;
+
+        // --- Load Area Data ---
+        async function loadAreaData(areaId) {
+            try {
+                teams = await fetchTeams(areaId);
+                matches = await fetchMatches(areaId);
+                for (const m of matches) {
+                    matchVersions[m.id] = m.version;
+                }
+                auditLogs = [];
+
+                renderAdminDashboard();
+                renderScoreTab();
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memuat data area.", "error");
+            }
+        }
+
+        // --- Admin Dashboard ---
+        function renderAdminDashboard() {
+            root.innerHTML = `
+                <div class="admin-header">
+                    <div class="admin-header-left">
+                        <h1>ADMIN PERTANDINGAN</h1>
+                        <span class="admin-area-badge">${escapeHtml(currentArea.name)}</span>
+                    </div>
+                    <div class="admin-header-info">
+                        <span>Operator: <strong>${escapeHtml(operatorName)}</strong></span>
+                        <span class="connection-bar connection-live" id="admin-conn-bar">
+                            <span class="connection-dot"></span>
+                            <span id="admin-conn-text">Online</span>
+                        </span>
+                        <span id="admin-sync-time"></span>
+                    </div>
+                    <div class="admin-header-actions">
+                        <button class="btn btn-small btn-secondary" onclick="window.showAreaPicker()">GANTI AREA</button>
+                        <button class="btn btn-small btn-secondary" onclick="window.openPublicMonitor()">MONITORING PUBLIK</button>
+                        <button class="btn btn-small btn-secondary" onclick="window.refreshAdminData()">REFRESH</button>
+                        <button class="btn btn-small btn-secondary" onclick="window.logoutHandler()">LOGOUT</button>
+                    </div>
+                </div>
+
+                <div class="admin-tabs">
+                    <button class="admin-tab admin-tab-active" data-tab="score" onclick="window.switchTab('score')">INPUT SKOR</button>
+                    <button class="admin-tab" data-tab="teams" onclick="window.switchTab('teams')">NAMA TIM</button>
+                    <button class="admin-tab" data-tab="history" onclick="window.switchTab('history')">RIWAYAT</button>
+                    <button class="admin-tab" data-tab="settings" onclick="window.switchTab('settings')">PENGATURAN</button>
+                </div>
+
+                <div class="admin-content" id="tab-content"></div>
+            `;
+        }
+
+        window.refreshAdminData = async function() {
+            if (!currentArea) return;
+            await loadAreaData(currentArea.id);
+            showToast("Data dimuat ulang.", "info");
+        };
+
+        window.showAreaPicker = function() {
+            currentArea = null;
+            removeAllChannels();
+            renderAreaPicker();
+        };
+
+        window.openPublicMonitor = function() {
+            window.open("./index.html", "_blank");
+        };
+
+        window.switchTab = function(tab) {
+            currentTab = tab;
+            document.querySelectorAll(".admin-tab").forEach(t => {
+                t.classList.toggle("admin-tab-active", t.dataset.tab === tab);
+            });
+
+            switch (tab) {
+                case "score": renderScoreTab(); break;
+                case "teams": renderTeamsTab(); break;
+                case "history": renderHistoryTab(); break;
+                case "settings": renderSettingsTab(); break;
+            }
+        };
+
+        // --- Score Tab ---
+        function renderScoreTab() {
+            const el = document.getElementById("tab-content");
+            if (!el) return;
+
+            const stages = [
+                { label: "PEREMPAT FINAL", codes: ["QF1", "QF2", "QF3", "QF4"] },
+                { label: "SEMIFINAL", codes: ["SF1", "SF2"] },
+                { label: "PEREBUTAN JUARA 3", codes: ["TP"] },
+                { label: "FINAL", codes: ["F"] }
+            ];
+
+            let html = "";
+            for (const stage of stages) {
+                html += `<h3 style="font-size:13px;font-weight:700;color:var(--color-text-muted);margin:16px 0 8px;text-transform:uppercase;letter-spacing:0.5px">${stage.label}</h3>`;
+
+                for (const code of stage.codes) {
+                    const m = matches.find(x => x.match_code === code);
+                    if (!m) continue;
+
+                    const t1 = teams.find(t => t.id === m.team1_id);
+                    const t2 = teams.find(t => t.id === m.team2_id);
+
+                    if (!t1 || !t2) {
+                        html += renderUnavailableMatch(m);
+                        continue;
+                    }
+
+                    html += renderMatchInput(m, t1, t2);
+                }
+            }
+
+            el.innerHTML = html;
+
+            document.querySelectorAll(".match-input-card").forEach(card => {
+                const s1 = card.querySelector(".score-team1");
+                const s2 = card.querySelector(".score-team2");
+                const penaltySection = card.querySelector(".penalty-section");
+
+                function checkPenalty() {
+                    const v1 = parseInt(s1?.value);
+                    const v2 = parseInt(s2?.value);
+                    const statusBtn = card.querySelector(".status-btn-active");
+                    const status = statusBtn ? statusBtn.dataset.status : "not_started";
+
+                    if (penaltySection) {
+                        if (status === "finished" && v1 === v2 && !isNaN(v1) && !isNaN(v2)) {
+                            penaltySection.style.display = "block";
+                        } else {
+                            penaltySection.style.display = "none";
+                        }
+                    }
+                }
+
+                if (s1) s1.addEventListener("input", checkPenalty);
+                if (s2) s2.addEventListener("input", checkPenalty);
+
+                card.querySelectorAll(".status-btn").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        card.querySelectorAll(".status-btn").forEach(b => b.classList.remove("status-btn-active"));
+                        btn.classList.add("status-btn-active");
+                        checkPenalty();
+                    });
+                });
+            });
+        }
+
+        function renderMatchInput(match, t1, t2) {
+            const statusBtnClass = (s) => {
+                if (s === "not_started") return "status-btn-not-started";
+                if (s === "live") return "status-btn-live";
+                return "status-btn-finished";
+            };
+
+            return `
+                <div class="match-input-card" data-match-id="${match.id}" data-version="${match.version}">
+                    <div class="match-input-header">
+                        <h3>${match.match_code} <span class="match-code-label">— ${stageLabel(match.stage)}</span></h3>
+                    </div>
+                    <div class="score-inputs">
+                        <div class="score-row">
+                            <label>${escapeHtml(t1.name)}</label>
+                            <input type="number" class="score-team1" min="0" step="1" inputmode="numeric" value="${match.score_team1 != null ? match.score_team1 : ''}">
+                        </div>
+                        <div class="score-row">
+                            <label>${escapeHtml(t2.name)}</label>
+                            <input type="number" class="score-team2" min="0" step="1" inputmode="numeric" value="${match.score_team2 != null ? match.score_team2 : ''}">
+                        </div>
+                    </div>
+                    <div class="status-buttons">
+                        <button class="status-btn ${statusBtnClass('not_started')} ${match.status === 'not_started' ? 'status-btn-active' : ''}" data-status="not_started">BELUM DIMULAI</button>
+                        <button class="status-btn ${statusBtnClass('live')} ${match.status === 'live' ? 'status-btn-active' : ''}" data-status="live">MULAI / LIVE</button>
+                        <button class="status-btn ${statusBtnClass('finished')} ${match.status === 'finished' ? 'status-btn-active' : ''}" data-status="finished">SELESAI</button>
+                    </div>
+                    <div class="penalty-section" style="display:${match.status === 'finished' && match.score_team1 != null && match.score_team2 != null && match.score_team1 === match.score_team2 ? 'block' : 'none'}">
+                        <h4>HASIL ADU PENALTI</h4>
+                        <div class="penalty-inputs">
+                            <div class="score-row">
+                                <label>Penalti ${escapeHtml(t1.name)}</label>
+                                <input type="number" class="penalty-team1" min="0" step="1" inputmode="numeric" value="${match.penalty_team1 != null ? match.penalty_team1 : ''}">
+                            </div>
+                            <div class="score-row">
+                                <label>Penalti ${escapeHtml(t2.name)}</label>
+                                <input type="number" class="penalty-team2" min="0" step="1" inputmode="numeric" value="${match.penalty_team2 != null ? match.penalty_team2 : ''}">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-small" onclick="window.saveMatch('${match.id}')">SIMPAN</button>
+                </div>
+            `;
+        }
+
+        function renderUnavailableMatch(match) {
+            let msg = "Pertandingan belum tersedia.";
+            if (match.match_code === "SF1") msg = "Menunggu hasil QF1 dan QF2.";
+            else if (match.match_code === "SF2") msg = "Menunggu hasil QF3 dan QF4.";
+            else if (match.match_code === "TP" || match.match_code === "F") msg = "Menunggu hasil semifinal.";
+
+            return `
+                <div class="match-unavailable">
+                    <strong>${match.match_code}</strong>
+                    <p>${msg}</p>
+                </div>
+            `;
+        }
+
+        window.saveMatch = async function(matchId) {
+            const card = document.querySelector(`.match-input-card[data-match-id="${matchId}"]`);
+            if (!card) return;
+
+            const s1 = parseInt(card.querySelector(".score-team1").value);
+            const s2 = parseInt(card.querySelector(".score-team2").value);
+            const p1v = card.querySelector(".penalty-team1")?.value;
+            const p2v = card.querySelector(".penalty-team2")?.value;
+            const p1 = p1v ? parseInt(p1v) : null;
+            const p2 = p2v ? parseInt(p2v) : null;
+            const statusBtn = card.querySelector(".status-btn-active");
+            const status = statusBtn ? statusBtn.dataset.status : "not_started";
+            const version = parseInt(card.dataset.version);
+
+            const match = matches.find(m => m.id === matchId);
+            const t1 = teams.find(t => t.id === match.team1_id);
+            const t2 = teams.find(t => t.id === match.team2_id);
+
+            if (status === "finished") {
+                if (isNaN(s1) || isNaN(s2)) {
+                    showToast("Skor wajib diisi untuk pertandingan selesai.", "error");
+                    return;
+                }
+            }
+
+            let confirmMsg = `Simpan hasil pertandingan ${currentArea.name}?\n\n${match.match_code}\n`;
+            confirmMsg += `${t1 ? t1.name : '???'} ${isNaN(s1) ? '-' : s1} - ${isNaN(s2) ? '-' : s2} ${t2 ? t2.name : '???'}\n`;
+            if (p1 != null && p2 != null) {
+                confirmMsg += `Penalti: ${p1} - ${p2}\n`;
+            }
+            confirmMsg += `\nStatus: ${statusLabel(status)}\n`;
+            if (status === "finished") {
+                const winner = s1 > s2 || (s1 === s2 && p1 > p2) ? t1 : t2;
+                confirmMsg += `Pemenang: ${winner ? winner.name : '???'}`;
+            }
+            confirmMsg += `\nOperator: ${operatorName}`;
+
+            if (!confirm(confirmMsg)) return;
+
+            const btn = card.querySelector(".btn-primary");
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading-spinner"></span> Menyimpan...';
+
+            try {
+                const result = await saveMatchResult({
+                    p_match_id: matchId,
+                    p_score_team1: isNaN(s1) ? null : s1,
+                    p_score_team2: isNaN(s2) ? null : s2,
+                    p_penalty_team1: p1,
+                    p_penalty_team2: p2,
+                    p_status: status,
+                    p_operator_name: operatorName,
+                    p_expected_version: version,
+                    p_force_reset_downstream: false
+                });
+
+                if (result && result.match) {
+                    card.dataset.version = result.match.version;
+                    matchVersions[matchId] = result.match.version;
+                }
+
+                let successMsg = "Hasil berhasil disimpan.";
+                if (status === "live") {
+                    successMsg = "Status pertandingan berhasil diubah menjadi Berlangsung.";
+                } else if (status === "finished" && result && result.winner_id) {
+                    const winner = teams.find(t => t.id === result.winner_id);
+                    if (winner) successMsg = `Pemenang: ${winner.name}`;
+                }
+
+                showToast(successMsg, "success");
+
+                await loadAreaData(currentArea.id);
+                if (currentTab === "score") renderScoreTab();
+            } catch (err) {
+                const msg = errorMessage(err);
+                showToast(msg, "error");
+
+                if (msg.includes("telah diperbarui oleh admin lain")) {
+                    await loadAreaData(currentArea.id);
+                    if (currentTab === "score") renderScoreTab();
+                }
+
+                if (msg.includes("memengaruhi")) {
+                    handleDownstreamConflict(matchId);
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = "SIMPAN";
+        };
+
+        function handleDownstreamConflict(matchId) {
+            if (!confirm("Pertandingan terdampak yang sudah memiliki hasil akan direset. Reset & simpan?")) return;
+
+            const card = document.querySelector(`.match-input-card[data-match-id="${matchId}"]`);
+            if (!card) return;
+
+            const s1 = parseInt(card.querySelector(".score-team1").value);
+            const s2 = parseInt(card.querySelector(".score-team2").value);
+            const p1v = card.querySelector(".penalty-team1")?.value;
+            const p2v = card.querySelector(".penalty-team2")?.value;
+            const p1 = p1v ? parseInt(p1v) : null;
+            const p2 = p2v ? parseInt(p2v) : null;
+            const statusBtn = card.querySelector(".status-btn-active");
+            const status = statusBtn ? statusBtn.dataset.status : "not_started";
+            const version = parseInt(card.dataset.version);
+
+            saveMatchResult({
+                p_match_id: matchId,
+                p_score_team1: isNaN(s1) ? null : s1,
+                p_score_team2: isNaN(s2) ? null : s2,
+                p_penalty_team1: p1,
+                p_penalty_team2: p2,
+                p_status: status,
+                p_operator_name: operatorName,
+                p_expected_version: version,
+                p_force_reset_downstream: true
+            }).then(result => {
+                showToast("Hasil disimpan dengan reset downstream.", "success");
+                loadAreaData(currentArea.id);
+                if (currentTab === "score") renderScoreTab();
+            }).catch(e => {
+                showToast(errorMessage(e), "error");
+            });
+        }
+
+        function hasUnsavedChanges() {
+            const cards = document.querySelectorAll(".match-input-card");
+            for (const card of cards) {
+                const s1 = card.querySelector(".score-team1")?.value;
+                const s2 = card.querySelector(".score-team2")?.value;
+                if (s1 || s2) return true;
+            }
+            return false;
+        }
+
+        // --- Teams Tab ---
+        function renderTeamsTab() {
+            const el = document.getElementById("tab-content");
+            if (!el) return;
+
+            let html = `
+                <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">
+                    Pastikan nama tim dan urutan pasangan pertandingan sudah benar.
+                </p>
+            `;
+
+            for (const team of teams.sort((a,b) => a.seed_number - b.seed_number)) {
+                const len = team.name.length;
+                const charClass = len > 55 ? "danger" : len > 45 ? "warning" : "";
+                html += `
+                    <div class="team-edit-row">
+                        <span class="seed-label">Seed ${team.seed_number}</span>
+                        <input type="text" class="team-name-input" data-team-id="${team.id}" value="${escapeHtml(team.name)}" maxlength="60" oninput="window.updateCharCount(this)">
+                        <span class="char-count ${charClass}">${len}</span>
+                        <button class="btn btn-small btn-primary" onclick="window.saveTeamName('${team.id}')">Simpan</button>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div style="margin-top:16px">
+                    <button class="btn btn-primary btn-small" onclick="window.saveAllTeamNames()">Simpan Semua</button>
+                </div>
+                <div style="margin-top:16px;padding:12px;background:var(--color-surface);border-radius:var(--radius);border:1px solid var(--color-border)">
+                    <p style="font-size:12px;color:var(--color-text-muted)"><strong>Preview Pasangan QF:</strong></p>
+                    ${renderQFPairs()}
+                </div>
+            `;
+
+            el.innerHTML = html;
+        }
+
+        window.updateCharCount = function(input) {
+            const row = input.closest(".team-edit-row");
+            const counter = row.querySelector(".char-count");
+            const len = input.value.length;
+            counter.textContent = len;
+            counter.className = "char-count" + (len > 55 ? " danger" : len > 45 ? " warning" : "");
+        };
+
+        window.saveTeamName = async function(teamId) {
+            const input = document.querySelector(`.team-name-input[data-team-id="${teamId}"]`);
+            if (!input) return;
+            const name = input.value.trim();
+
+            if (!name) {
+                showToast("Nama tim tidak boleh kosong.", "error");
+                return;
+            }
+
+            try {
+                await updateTeamName({
+                    p_team_id: teamId,
+                    p_team_name: name,
+                    p_operator_name: operatorName
+                });
+                showToast("Nama tim berhasil disimpan.", "success");
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
+        window.saveAllTeamNames = async function() {
+            const inputs = document.querySelectorAll(".team-name-input");
+            let success = 0;
+            let fail = 0;
+
+            for (const input of inputs) {
+                const name = input.value.trim();
+                if (!name) {
+                    fail++;
+                    continue;
+                }
+                try {
+                    await updateTeamName({
+                        p_team_id: input.dataset.teamId,
+                        p_team_name: name,
+                        p_operator_name: operatorName
+                    });
+                    success++;
+                } catch {
+                    fail++;
+                }
+            }
+
+            showToast(`${success} tim disimpan` + (fail ? `, ${fail} gagal.` : "."), fail ? "warning" : "success");
+        };
+
+        function renderQFPairs() {
+            const pairs = [[1, 2], [3, 4], [5, 6], [7, 8]];
+            return pairs.map(([a, b]) => {
+                const t1 = teams.find(t => t.seed_number === a);
+                const t2 = teams.find(t => t.seed_number === b);
+                return `<div style="font-size:12px;color:var(--color-text);padding:2px 0">
+                    ${t1 ? escapeHtml(t1.name) : '---'} vs ${t2 ? escapeHtml(t2.name) : '---'}
+                </div>`;
+            }).join("");
+        }
+
+        // --- History Tab ---
+        async function renderHistoryTab() {
+            const el = document.getElementById("tab-content");
+            if (!el) return;
+
+            el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Memuat riwayat...</p></div>';
+
+            try {
+                auditLogs = await fetchAuditLogs(currentArea.id, 30);
+            } catch (err) {
+                console.error(err);
+                el.innerHTML = '<div class="error-state"><p>Gagal memuat riwayat.</p></div>';
+                return;
+            }
+
+            if (!auditLogs.length) {
+                el.innerHTML = '<div class="empty-state"><p>Belum ada riwayat perubahan.</p></div>';
+                return;
+            }
+
+            let html = '<div class="audit-list">';
+            for (const log of auditLogs) {
+                const oldData = log.old_data;
+                const newData = log.new_data;
+                const matchObj = matches.find(m => m.id === log.match_id);
+                const matchCode = matchObj ? matchObj.match_code : "???";
+
+                let actionDesc = "";
+                if (oldData && newData) {
+                    const o = typeof oldData === 'string' ? JSON.parse(oldData) : oldData;
+                    const n = typeof newData === 'string' ? JSON.parse(newData) : newData;
+                    const oldScore = `${o.score_team1 ?? '-'}-${o.score_team2 ?? '-'}`;
+                    const newScore = `${n.score_team1 ?? '-'}-${n.score_team2 ?? '-'}`;
+                    if (oldScore !== newScore) {
+                        actionDesc = `Perubahan: ${oldScore} menjadi ${newScore}`;
+                    } else if (o.status !== n.status) {
+                        actionDesc = `Status: ${statusLabel(o.status)} → ${statusLabel(n.status)}`;
+                    } else {
+                        actionDesc = "Data diperbarui";
+                    }
+                }
+
+                html += `
+                    <div class="audit-item">
+                        <div>
+                            <span class="audit-time">${formatWIB(log.created_at)}</span>
+                            <span class="audit-operator">${escapeHtml(log.operator_name)}</span>
+                        </div>
+                        <div class="audit-match">${escapeHtml(currentArea.name)} — ${matchCode}</div>
+                        <div class="audit-action">${escapeHtml(actionDesc)}</div>
+                        <div style="font-size:10px;color:var(--color-text-muted);margin-top:2px">${log.action_type}</div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+
+            el.innerHTML = html;
+        }
+
+        // --- Settings Tab ---
+        function renderSettingsTab() {
+            const el = document.getElementById("tab-content");
+            if (!el) return;
+
+            const activeMatches = matches.filter(m => m.status !== 'not_started');
+
+            el.innerHTML = `
+                <div class="settings-section">
+                    <h3>Reset Pertandingan</h3>
+                    <p>Mengosongkan skor dan hasil satu pertandingan.</p>
+                    <div class="form-group">
+                        <label>Pilih Pertandingan</label>
+                        <select id="reset-match-select" style="background:var(--color-bg);color:var(--color-text);border:1px solid var(--color-border);border-radius:var(--radius);padding:8px 12px;width:100%;max-width:300px">
+                            ${activeMatches.length === 0
+                                ? '<option value="">Tidak ada pertandingan aktif</option>'
+                                : activeMatches.map(m => {
+                                    const t1 = teams.find(t => t.id === m.team1_id);
+                                    const t2 = teams.find(t => t.id === m.team2_id);
+                                    return `<option value="${m.id}">${m.match_code} — ${t1 ? t1.name : '???'} vs ${t2 ? t2.name : '???'}</option>`;
+                                }).join("")
+                            }
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button class="btn btn-small btn-secondary" onclick="window.resetSingleMatch()" ${activeMatches.length === 0 ? 'disabled' : ''}>Reset Satu Pertandingan</button>
+                        <button class="btn btn-small btn-danger" onclick="window.resetMatchAndDownstream()" ${activeMatches.length === 0 ? 'disabled' : ''}>Reset & Downstream</button>
+                    </div>
+                </div>
+
+                <div class="settings-section" style="border-top:1px solid var(--color-border);padding-top:16px">
+                    <h3 style="color:var(--color-danger)">Reset Seluruh Area</h3>
+                    <p>Mengosongkan seluruh skor area ini. Nama tim tidak akan dihapus.</p>
+                    <div class="form-group">
+                        <label>Ketik <strong>RESET AREA</strong> untuk konfirmasi</label>
+                        <input type="text" id="reset-area-confirm" placeholder="RESET AREA" style="background:var(--color-bg);color:var(--color-text);border:1px solid var(--color-border);border-radius:var(--radius);padding:8px 12px;width:100%;max-width:300px">
+                    </div>
+                    <button class="btn btn-danger btn-small" onclick="window.resetFullArea()">RESET AREA</button>
+                </div>
+
+                <div class="settings-section" style="border-top:1px solid var(--color-border);padding-top:16px">
+                    <h3>Informasi Sistem</h3>
+                    <p style="font-size:12px;color:var(--color-text-muted)">
+                        Area: ${escapeHtml(currentArea.name)}<br>
+                        Operator: ${escapeHtml(operatorName)}<br>
+                        Jumlah pertandingan: ${matches.length}<br>
+                        Jumlah tim: ${teams.length}
+                    </p>
+                </div>
+            `;
+        }
+
+        window.resetSingleMatch = async function() {
+            const select = document.getElementById("reset-match-select");
+            if (!select || !select.value) return;
+            const matchId = select.value;
+            const match = matches.find(m => m.id === matchId);
+            if (!match) return;
+
+            if (!confirm(`Reset pertandingan ${match.match_code}?`)) return;
+
+            try {
+                await resetMatchResult({
+                    p_match_id: matchId,
+                    p_operator_name: operatorName,
+                    p_expected_version: match.version,
+                    p_reset_downstream: false
+                });
+                showToast("Pertandingan berhasil direset.", "success");
+                await loadAreaData(currentArea.id);
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
+        window.resetMatchAndDownstream = async function() {
+            const select = document.getElementById("reset-match-select");
+            if (!select || !select.value) return;
+            const matchId = select.value;
+            const match = matches.find(m => m.id === matchId);
+            if (!match) return;
+
+            if (!confirm(`Reset ${match.match_code} beserta pertandingan downstream?`)) return;
+
+            try {
+                await resetMatchResult({
+                    p_match_id: matchId,
+                    p_operator_name: operatorName,
+                    p_expected_version: match.version,
+                    p_reset_downstream: true
+                });
+                showToast("Reset berhasil.", "success");
+                await loadAreaData(currentArea.id);
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
+        window.resetFullArea = async function() {
+            const input = document.getElementById("reset-area-confirm");
+            if (!input || input.value !== "RESET AREA") {
+                showToast("Ketik 'RESET AREA' untuk konfirmasi.", "warning");
+                return;
+            }
+
+            if (!confirm(`RESET AKHIR: Seluruh skor ${currentArea.name} akan dihapus. Lanjutkan?`)) return;
+
+            try {
+                await resetArea({
+                    p_area_id: currentArea.id,
+                    p_operator_name: operatorName,
+                    p_confirmation_text: "RESET AREA"
+                });
+                showToast(`${currentArea.name} berhasil direset.`, "success");
+                await loadAreaData(currentArea.id);
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
+        // --- Realtime handlers ---
+        function handleMatchUpdate(payload) {
+            const match = payload.new;
+            if (!match || !currentArea || match.area_id !== currentArea.id) return;
+
+            const idx = matches.findIndex(m => m.id === match.id);
+            if (idx >= 0) {
+                matches[idx] = match;
+                if (currentTab === "score") {
+                    renderScoreTab();
+                }
+            }
+        }
+
+        function handleTeamUpdate(payload) {
+            const team = payload.new;
+            if (!team || !currentArea || team.area_id !== currentArea.id) return;
+
+            const idx = teams.findIndex(t => t.id === team.id);
+            if (idx >= 0) teams[idx] = team;
+            else teams.push(team);
+
+            if (currentTab === "teams") renderTeamsTab();
+        }
+
+        // --- Toast ---
+        function showToast(msg, type = "info") {
+            let tc = document.querySelector(".toast-container");
+            if (!tc) {
+                tc = document.createElement("div");
+                tc.className = "toast-container";
+                document.body.appendChild(tc);
+            }
+            const t = document.createElement("div");
+            t.className = "toast toast-" + type;
+            t.textContent = msg;
+            tc.appendChild(t);
+            setTimeout(() => {
+                t.classList.add("toast-out");
+                setTimeout(() => t.remove(), 300);
+            }, 3000);
+        }
+
+        // --- Load Admin ---
+        async function loadAdmin() {
+            try {
+                const { data: tData } = await supabase
+                    .from("tournaments")
+                    .select("*")
+                    .limit(1)
+                    .single();
+
+                if (tData) {
+                    tournament = tData;
+                } else {
+                    tournament = await fetchTournament("pre-one-day-turnament-kep");
+                }
+
+                areas = await fetchAreas(tournament.id);
+                renderAreaPicker();
+            } catch (err) {
+                console.error(err);
+                showToast("Gagal memuat data turnamen.", "error");
+            }
+        }
+
+        // --- Init ---
+        (async function init() {
+            session = await checkSession();
+            if (session) {
+                await loadAdmin();
+            } else {
+                renderLogin();
+            }
+        })();
+
+        setInterval(() => {
+            const bar = document.getElementById("admin-conn-bar");
+            const text = document.getElementById("admin-conn-text");
+            if (bar) {
+                const channels = supabase.getChannels();
+                const hasSub = channels.some(c => c.state === "subscribed");
+                bar.className = "connection-bar " + (hasSub ? "connection-live" : "connection-offline");
+                text.textContent = hasSub ? "Online" : "Offline";
+            }
+        }, 5000);
+
+        window.addEventListener("beforeunload", () => {
+            removeAllChannels();
+        });
+    </script>
+</body>
+</html>
