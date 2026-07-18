@@ -62,13 +62,13 @@ CREATE OR REPLACE FUNCTION get_downstream_match(p_match_id uuid)
 RETURNS TABLE(match_id uuid, match_code text, side text, result_type text) AS $$
 BEGIN
     RETURN QUERY
-    SELECT m.id, m.match_code, 'team1', m.source_team1_result
-    FROM matches m
-    WHERE m.source_team1_match_id = p_match_id
+    SELECT d.id, d.match_code, 'team1', d.source_team1_result
+    FROM matches d
+    WHERE d.source_team1_match_id = p_match_id
     UNION ALL
-    SELECT m.id, m.match_code, 'team2', m.source_team2_result
-    FROM matches m
-    WHERE m.source_team2_match_id = p_match_id;
+    SELECT d.id, d.match_code, 'team2', d.source_team2_result
+    FROM matches d
+    WHERE d.source_team2_match_id = p_match_id;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
@@ -80,15 +80,15 @@ RETURNS TABLE(match_id uuid, match_code text) AS $$
 BEGIN
     RETURN QUERY
     WITH RECURSIVE chain AS (
-        SELECT id, match_code, source_team1_match_id, source_team2_match_id
-        FROM matches
-        WHERE source_team1_match_id = p_match_id OR source_team2_match_id = p_match_id
+        SELECT d.id, d.match_code, d.source_team1_match_id, d.source_team2_match_id
+        FROM matches d
+        WHERE d.source_team1_match_id = p_match_id OR d.source_team2_match_id = p_match_id
         UNION ALL
-        SELECT m.id, m.match_code, m.source_team1_match_id, m.source_team2_match_id
-        FROM matches m
-        INNER JOIN chain c ON (m.source_team1_match_id = c.id OR m.source_team2_match_id = c.id)
+        SELECT n.id, n.match_code, n.source_team1_match_id, n.source_team2_match_id
+        FROM matches n
+        INNER JOIN chain c ON (n.source_team1_match_id = c.id OR n.source_team2_match_id = c.id)
     )
-    SELECT id, match_code FROM chain;
+    SELECT c.id, c.match_code FROM chain c;
 END;
 $$ LANGUAGE plpgsql STABLE;
 
