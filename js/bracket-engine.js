@@ -9,13 +9,14 @@ export function renderBracket(area, teams, matches) {
 
   const container = document.createElement("div");
   container.className = "bracket-svg-container";
+  container.setAttribute("aria-label", `Bagan pertandingan ${area.name}`);
 
   const bracketEl = document.createElement("div");
   bracketEl.className = "bracket";
 
-  bracketEl.appendChild(buildRound("PEREMPAT FINAL", ["QF1", "QF2", "QF3", "QF4"], matchMap, teamMap));
-  bracketEl.appendChild(buildRound("SEMIFINAL", ["SF1", "SF2"], matchMap, teamMap));
-  bracketEl.appendChild(buildRound("FINAL & JUARA 3", ["F", "TP"], matchMap, teamMap));
+  bracketEl.appendChild(buildRound("PEREMPAT FINAL", ["QF1", "QF2", "QF3", "QF4"], "round-quarter", matchMap, teamMap));
+  bracketEl.appendChild(buildRound("SEMIFINAL", ["SF1", "SF2"], "round-semi", matchMap, teamMap));
+  bracketEl.appendChild(buildRound("FINAL & JUARA 3", ["F", "TP"], "round-final", matchMap, teamMap));
   bracketEl.appendChild(buildPodium(matchMap, teamMap));
 
   container.appendChild(bracketEl);
@@ -29,9 +30,9 @@ export function renderBracket(area, teams, matches) {
   return container;
 }
 
-function buildRound(title, codes, matchMap, teamMap) {
+function buildRound(title, codes, roundClass, matchMap, teamMap) {
   const col = document.createElement("div");
-  col.className = "bracket-round";
+  col.className = `bracket-round ${roundClass}`;
   col.dataset.round = title;
 
   const header = document.createElement("div");
@@ -72,6 +73,7 @@ function buildPodium(matchMap, teamMap) {
   for (const item of items) {
     const div = document.createElement("div");
     div.className = "podium-item podium-" + item.cls;
+    div.dataset.place = item.cls;
 
     const label = document.createElement("div");
     label.className = "podium-label";
@@ -92,7 +94,7 @@ function buildPodium(matchMap, teamMap) {
 
 function createMatchCard(match, matchMap, teamMap) {
   const wrapper = document.createElement("div");
-  wrapper.className = "match-wrapper";
+  wrapper.className = `match-wrapper match-${match.status}`;
   wrapper.dataset.matchId = match.id;
   wrapper.dataset.matchCode = match.match_code;
 
@@ -244,6 +246,12 @@ function drawConnectors(container) {
     }
   }
 
+  function addTerminalConn(fromCode, place, result) {
+    const from = wrapperMap[fromCode];
+    const to = bracket.querySelector(`.podium-item[data-place="${place}"]`);
+    if (from && to) connections.push({ from, to, result });
+  }
+
   addConn("QF1", "SF1", "winner");
   addConn("QF2", "SF1", "winner");
   addConn("QF3", "SF2", "winner");
@@ -252,18 +260,20 @@ function drawConnectors(container) {
   addConn("SF2", "F", "winner");
   addConn("SF1", "TP", "loser");
   addConn("SF2", "TP", "loser");
+  addTerminalConn("F", "gold", "winner");
+  addTerminalConn("F", "silver", "loser");
+  addTerminalConn("TP", "bronze", "winner");
 
   if (connections.length === 0) return;
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.setAttribute("class", "bracket-svg-connectors");
-  svg.style.position = "absolute";
-  svg.style.top = "0";
-  svg.style.left = "0";
-  svg.style.width = "100%";
-  svg.style.height = "100%";
-  svg.style.pointerEvents = "none";
-  svg.style.overflow = "visible";
+  const width = bracket.scrollWidth;
+  const height = bracket.scrollHeight;
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("aria-hidden", "true");
 
   for (const conn of connections) {
     const fromCol = conn.from.closest(".bracket-round");
@@ -277,21 +287,24 @@ function drawConnectors(container) {
     const from = getRightCenter(conn.from);
     const to = getLeftCenter(conn.to);
 
-    const color = conn.result === "winner"
-      ? "rgba(46,204,113,0.2)"
-      : "rgba(255,255,255,0.1)";
-    const width = conn.result === "winner" ? "2" : "1.5";
+    const d = `M ${from.x} ${from.y} L ${midX} ${from.y} L ${midX} ${to.y} L ${to.x} ${to.y}`;
+
+    const shadow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    shadow.setAttribute("d", d);
+    shadow.setAttribute("class", "connector-shadow");
+    svg.appendChild(shadow);
 
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    const d = `M ${from.x} ${from.y} L ${midX} ${from.y} L ${midX} ${to.y} L ${to.x} ${to.y}`;
     path.setAttribute("d", d);
-    path.setAttribute("stroke", color);
-    path.setAttribute("stroke-width", width);
-    path.setAttribute("fill", "none");
-    if (conn.result === "loser") {
-      path.setAttribute("stroke-dasharray", "4,3");
-    }
+    path.setAttribute("class", `connector-line connector-${conn.result}`);
     svg.appendChild(path);
+
+    const node = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    node.setAttribute("cx", to.x);
+    node.setAttribute("cy", to.y);
+    node.setAttribute("r", "3.5");
+    node.setAttribute("class", `connector-node connector-${conn.result}`);
+    svg.appendChild(node);
   }
 
   container.insertBefore(svg, bracket);
