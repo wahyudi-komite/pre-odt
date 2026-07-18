@@ -59,7 +59,7 @@ CREATE TRIGGER trg_touch_tournament_matches
 -- HELPER: get the downstream match (F or TP) for a given source
 -- -----------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_downstream_match(p_match_id uuid)
-RETURNS TABLE(match_id uuid, match_code text, position text, result_type text) AS $$
+RETURNS TABLE(match_id uuid, match_code text, side text, result_type text) AS $$
 BEGIN
     RETURN QUERY
     SELECT m.id, m.match_code, 'team1', m.source_team1_result
@@ -255,18 +255,18 @@ BEGIN
     IF p_status = 'finished' AND v_winner_id IS NOT NULL THEN
         FOR v_downstream IN SELECT * FROM get_downstream_match(p_match_id) LOOP
             IF v_downstream.result_type = 'winner' THEN
-                IF v_downstream.position = 'team1' THEN
+                IF v_downstream.side = 'team1' THEN
                     UPDATE matches SET team1_id = v_winner_id
                     WHERE id = v_downstream.match_id AND team1_id IS DISTINCT FROM v_winner_id;
-                ELSIF v_downstream.position = 'team2' THEN
+                ELSIF v_downstream.side = 'team2' THEN
                     UPDATE matches SET team2_id = v_winner_id
                     WHERE id = v_downstream.match_id AND team2_id IS DISTINCT FROM v_winner_id;
                 END IF;
             ELSIF v_downstream.result_type = 'loser' AND v_loser_id IS NOT NULL THEN
-                IF v_downstream.position = 'team1' THEN
+                IF v_downstream.side = 'team1' THEN
                     UPDATE matches SET team1_id = v_loser_id
                     WHERE id = v_downstream.match_id AND team1_id IS DISTINCT FROM v_loser_id;
-                ELSIF v_downstream.position = 'team2' THEN
+                ELSIF v_downstream.side = 'team2' THEN
                     UPDATE matches SET team2_id = v_loser_id
                     WHERE id = v_downstream.match_id AND team2_id IS DISTINCT FROM v_loser_id;
                 END IF;
