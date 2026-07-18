@@ -43,11 +43,20 @@
         let searchQuery = "";
         let displayMode = false;
         let perspectiveMode = false;
+        let lightMode = false;
         let focusArea = null;
         let lastUpdate = null;
         let connectionTimer = null;
+        let refreshInProgress = false;
 
         const root = document.getElementById("app");
+
+        try {
+            lightMode = localStorage.getItem("pre-odt-theme") === "light";
+        } catch (_) {
+            lightMode = false;
+        }
+        document.body.classList.toggle("light-mode", lightMode);
 
         // --- Init ---
         async function init() {
@@ -182,8 +191,9 @@
                                 <span class="connection-dot"></span>
                                 <span id="conn-text">Live</span>
                             </span>
+                            <button class="btn btn-small btn-secondary" id="theme-button" onclick="window.toggleTheme()" title="Aktifkan light mode">LIGHT</button>
                             <button class="btn btn-small btn-secondary" id="perspective-button" onclick="window.togglePerspective()" title="Aktifkan perspektif 3D">3D <span class="btn-label">PERSPEKTIF</span></button>
-                            <button class="btn btn-small btn-secondary" onclick="window.toggleDisplayMode()" title="Mode display">TV <span class="btn-label">DISPLAY</span></button>
+                            <button class="btn btn-small btn-secondary" id="display-button" onclick="window.toggleDisplayMode()" title="Mode display">TV DISPLAY</button>
                             <button class="btn btn-small btn-secondary" onclick="window.toggleFullscreen()" title="Layar penuh">[ ]</button>
                             <button class="btn btn-small btn-secondary" onclick="window.refreshData()" title="Muat ulang">R</button>
                         </div>
@@ -215,6 +225,8 @@
             renderStats();
             renderChampions();
             renderAllBrackets();
+            updateThemeControl();
+            updateDisplayControl();
             document.body.classList.toggle("view-3d", perspectiveMode);
             const perspectiveButton = document.getElementById("perspective-button");
             if (perspectiveButton) perspectiveButton.classList.toggle("is-active", perspectiveMode);
@@ -387,8 +399,21 @@
             } else {
                 document.body.classList.remove("display-focus-area");
                 focusArea = null;
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(() => {});
+                }
             }
+            updateDisplayControl();
+            renderAllBrackets();
         };
+
+        function updateDisplayControl() {
+            const button = document.getElementById("display-button");
+            if (!button) return;
+            button.textContent = displayMode ? "KELUAR TV" : "TV DISPLAY";
+            button.classList.toggle("is-active", displayMode);
+            button.title = displayMode ? "Keluar dari mode TV" : "Aktifkan mode TV";
+        }
 
         window.togglePerspective = function() {
             perspectiveMode = !perspectiveMode;
@@ -399,6 +424,25 @@
                 button.title = perspectiveMode ? "Matikan perspektif 3D" : "Aktifkan perspektif 3D";
             }
             renderAllBrackets();
+        };
+
+        function updateThemeControl() {
+            document.body.classList.toggle("light-mode", lightMode);
+            const button = document.getElementById("theme-button");
+            if (!button) return;
+            button.textContent = lightMode ? "DARK" : "LIGHT";
+            button.classList.toggle("is-active", lightMode);
+            button.title = lightMode ? "Aktifkan dark mode" : "Aktifkan light mode";
+        }
+
+        window.toggleTheme = function() {
+            lightMode = !lightMode;
+            try {
+                localStorage.setItem("pre-odt-theme", lightMode ? "light" : "dark");
+            } catch (_) {
+                // Theme still applies for this session when storage is unavailable.
+            }
+            updateThemeControl();
         };
 
         function promptFocusArea() {
@@ -437,9 +481,7 @@
         window.setFocusArea = function(areaId) {
             focusArea = areaId;
             document.body.classList.add("display-focus-area");
-            document.querySelectorAll(".area-section").forEach(s => {
-                s.classList.toggle("area-focused", s.dataset.areaId === areaId);
-            });
+            renderAllBrackets();
             const modal = document.getElementById("focus-modal");
             if (modal) modal.remove();
         };
@@ -453,6 +495,8 @@
         };
 
         window.refreshData = async function() {
+            if (refreshInProgress) return;
+            refreshInProgress = true;
             try {
                 const areaIds = areas.map(a => a.id);
                 matches = await fetchAllMatches(areaIds);
@@ -472,6 +516,8 @@
             } catch (err) {
                 console.error(err);
                 showToast("Data gagal dimuat ulang.", "error");
+            } finally {
+                refreshInProgress = false;
             }
         };
 
@@ -525,6 +571,10 @@
         init();
 
         setInterval(() => {
+            if (displayMode) {
+                window.refreshData();
+                return;
+            }
             const connText = document.getElementById("conn-text");
             if (connText && connText.textContent === "Offline") {
                 window.refreshData();

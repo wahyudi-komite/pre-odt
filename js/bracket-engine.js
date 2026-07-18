@@ -35,11 +35,6 @@ function buildRound(title, codes, roundClass, matchMap, teamMap) {
   col.className = `bracket-round ${roundClass}`;
   col.dataset.round = title;
 
-  const header = document.createElement("div");
-  header.className = "bracket-round-header";
-  header.textContent = title;
-  col.appendChild(header);
-
   for (const code of codes) {
     const m = matchMap[code];
     if (m) col.appendChild(createMatchCard(m, matchMap, teamMap));
@@ -51,11 +46,6 @@ function buildRound(title, codes, roundClass, matchMap, teamMap) {
 function buildPodium(matchMap, teamMap) {
   const col = document.createElement("div");
   col.className = "bracket-round round-podium";
-
-  const header = document.createElement("div");
-  header.className = "bracket-round-header";
-  header.textContent = "PODIUM";
-  col.appendChild(header);
 
   const finalMatch = matchMap["F"];
   const tpMatch = matchMap["TP"];
