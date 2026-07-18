@@ -53,6 +53,7 @@
         let lastUpdate = null;
         let connectionTimer = null;
         let refreshInProgress = false;
+        let fullscreenAreaId = null;
 
         const root = document.getElementById("app");
 
@@ -148,19 +149,27 @@
                     else teams.push(t);
                 }
                 lastUpdate = new Date();
-                renderFull();
+                const fullscreenArea = document.fullscreenElement?.classList.contains("area-section")
+                    ? document.fullscreenElement
+                    : null;
+                if (fullscreenArea) redrawAreaBracket(fullscreenArea.dataset.areaId);
+                else renderFull();
                 updateLastUpdate();
             }
         }
 
         function updateMatchCard(match) {
             if (!match || filterArea !== "all" && filterArea !== match.area_id) return;
-            const section = document.querySelector(`.area-section[data-area-id="${match.area_id}"]`);
-            if (section) {
-                const oldContainer = section.querySelector(".bracket-svg-container, .empty-bracket");
-                if (oldContainer) oldContainer.remove();
-                renderBracketSection(match.area_id);
-            }
+            redrawAreaBracket(match.area_id);
+        }
+
+        function redrawAreaBracket(areaId) {
+            const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
+            if (!section) return;
+
+            const oldContainer = section.querySelector(".bracket-svg-container, .empty-bracket");
+            if (oldContainer) oldContainer.remove();
+            renderBracketSection(areaId);
         }
 
         function showError(msg) {
@@ -323,7 +332,13 @@
                                     <h2>${escapeHtml(area.name)}</h2>
                                 </div>
                             </div>
-                            <span class="area-progress">${finished}/8 selesai - ${progress}%</span>
+                            <div class="area-header-actions">
+                                <span class="area-progress">${finished}/8 selesai - ${progress}%</span>
+                                <button type="button" class="area-fullscreen-btn" onclick="window.toggleAreaFullscreen('${area.id}')" title="Fullscreen ${escapeHtml(area.name)}" aria-label="Fullscreen ${escapeHtml(area.name)}">
+                                    <span class="area-fullscreen-open">FULL</span>
+                                    <span class="area-fullscreen-close">EXIT</span>
+                                </button>
+                            </div>
                         </div>
                     </section>
                 `;
@@ -483,6 +498,37 @@
             }
         };
 
+        window.toggleAreaFullscreen = async function (areaId) {
+            const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
+            if (!section) return;
+
+            try {
+                fullscreenAreaId = areaId;
+                if (document.fullscreenElement === section) {
+                    await document.exitFullscreen();
+                } else {
+                    if (document.fullscreenElement) await document.exitFullscreen();
+                    await section.requestFullscreen();
+                }
+            } catch (err) {
+                fullscreenAreaId = null;
+                console.error(err);
+                showToast("Fullscreen area tidak dapat diaktifkan.", "error");
+            }
+        };
+
+        document.addEventListener("fullscreenchange", () => {
+            const activeArea = document.fullscreenElement?.classList.contains("area-section")
+                ? document.fullscreenElement
+                : null;
+            const areaId = activeArea?.dataset.areaId || fullscreenAreaId;
+            fullscreenAreaId = activeArea?.dataset.areaId || null;
+
+            if (areaId) {
+                requestAnimationFrame(() => redrawAreaBracket(areaId));
+            }
+        });
+
         window.refreshData = async function () {
             if (refreshInProgress) return;
             refreshInProgress = true;
@@ -498,8 +544,15 @@
                     allMatches[m.area_id].push(m);
                 }
                 lastUpdate = new Date();
-                renderChampions();
-                renderAllBrackets();
+                const fullscreenArea = document.fullscreenElement?.classList.contains("area-section")
+                    ? document.fullscreenElement
+                    : null;
+                if (fullscreenArea) {
+                    redrawAreaBracket(fullscreenArea.dataset.areaId);
+                } else {
+                    renderChampions();
+                    renderAllBrackets();
+                }
                 updateLastUpdate();
             } catch (err) {
                 console.error(err);
@@ -572,7 +625,13 @@
         let resizeTimer = null;
         window.addEventListener("resize", () => {
             clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(renderAllBrackets, 160);
+            resizeTimer = setTimeout(() => {
+                const fullscreenArea = document.fullscreenElement?.classList.contains("area-section")
+                    ? document.fullscreenElement
+                    : null;
+                if (fullscreenArea) redrawAreaBracket(fullscreenArea.dataset.areaId);
+                else renderAllBrackets();
+            }, 160);
         });
 
         window.addEventListener("beforeunload", () => {
