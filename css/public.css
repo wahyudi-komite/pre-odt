@@ -2017,6 +2017,13 @@ body.display-mode {
         padding-inline: var(--round-gutter);
     }
 
+    .round-quarter {
+        justify-content: space-between;
+        gap: clamp(4px, 0.45vh, 6px);
+    }
+
+    .round-quarter .match-wrapper { padding: 0; }
+
     .match-wrapper { min-height: 0; padding: 1px 0; }
 
     .match-card {
