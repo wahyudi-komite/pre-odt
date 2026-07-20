@@ -6,6 +6,13 @@ Increase the vertical distance between QF1, QF2, QF3, and QF4 cards on the
 desktop multi-area monitoring page so the quarterfinal matches are easier to
 distinguish while all seven area cards still fit in one viewport.
 
+## Revision Rationale
+
+The first implementation used `clamp(4px, 0.45vh, 6px)`. At the target
+1920 x 990 viewport, that resolves to about 4.5 px. Because the previous
+wrapper padding already created about 2 px between adjacent cards, the visible
+increase was only about 2.5 px and the cards still appeared crowded.
+
 ## Scope
 
 - Apply the spacing change only to the quarterfinal column (`.round-quarter`)
@@ -21,7 +28,8 @@ Within the existing desktop media query:
 - Change the quarterfinal column to distribute its four match wrappers with
   `justify-content: space-between`.
 - Add a responsive minimum vertical `gap` of
-  `clamp(4px, 0.45vh, 6px)` between quarterfinal match wrappers.
+  `clamp(10px, 1.2vh, 12px)` between quarterfinal match wrappers. This resolves
+  to about 11.9 px at the target 1920 x 990 viewport.
 - Remove the inherited 1 px vertical wrapper padding only for quarterfinal
   wrappers, so the explicit gap is the single source of spacing.
 - Preserve the existing compact match-card dimensions and the outer bracket
@@ -44,6 +52,8 @@ wrappers. It must not reduce below the explicit responsive gap.
 - Add a CSS contract test that confirms the desktop media query contains a
   quarterfinal-only rule with `justify-content: space-between`, the responsive
   gap, and zero vertical wrapper padding.
+- Confirm the test rejects the superseded 4-6 px gap so the visually
+  insufficient spacing cannot return.
 - Confirm the global desktop `.match-wrapper` rule remains unchanged so SF and
   final cards keep their current spacing.
 - At the target 1920 x 990 viewport, confirm QF1-QF4 have visibly separated
