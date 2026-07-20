@@ -604,6 +604,12 @@ body.light-mode {
     background: rgba(24, 84, 60, 0.16);
 }
 
+.confirm-modal p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--color-text);
+}
+
 .light-mode .penalty-section {
     background: rgba(192, 57, 43, 0.06);
     border-color: rgba(192, 57, 43, 0.15);

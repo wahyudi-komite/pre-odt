@@ -196,7 +196,8 @@
 
         window.selectArea = async function(areaId) {
             if (hasUnsavedChanges()) {
-                if (!confirm("Ada input yang belum disimpan. Pindah area?")) return;
+                const ok = await showConfirm("Ada input yang belum disimpan. Pindah area?");
+                if (!ok) return;
             }
 
             currentArea = areas.find(a => a.id === areaId);
@@ -489,7 +490,8 @@
             }
             confirmMsg += `\nOperator: ${operatorName}`;
 
-            if (!confirm(confirmMsg)) return;
+            const confirmed = await showConfirm(confirmMsg, "YA, SIMPAN");
+            if (!confirmed) return;
 
             const btn = card.querySelector(".btn-primary");
             btn.disabled = true;
@@ -543,8 +545,9 @@
             btn.innerHTML = "SIMPAN";
         };
 
-        function handleDownstreamConflict(matchId) {
-            if (!confirm("Pertandingan terdampak yang sudah memiliki hasil akan direset. Reset & simpan?")) return;
+        async function handleDownstreamConflict(matchId) {
+            const ok = await showConfirm("Pertandingan terdampak yang sudah memiliki hasil akan direset. Reset & simpan?");
+            if (!ok) return;
 
             const card = document.querySelector(`.match-input-card[data-match-id="${matchId}"]`);
             if (!card) return;
@@ -559,23 +562,24 @@
             const status = statusBtn ? statusBtn.dataset.status : "not_started";
             const version = parseInt(card.dataset.version);
 
-            saveMatchResult({
-                p_match_id: matchId,
-                p_score_team1: isNaN(s1) ? null : s1,
-                p_score_team2: isNaN(s2) ? null : s2,
-                p_penalty_team1: p1,
-                p_penalty_team2: p2,
-                p_status: status,
-                p_operator_name: operatorName,
-                p_expected_version: version,
-                p_force_reset_downstream: true
-            }).then(result => {
+            try {
+                const result = await saveMatchResult({
+                    p_match_id: matchId,
+                    p_score_team1: isNaN(s1) ? null : s1,
+                    p_score_team2: isNaN(s2) ? null : s2,
+                    p_penalty_team1: p1,
+                    p_penalty_team2: p2,
+                    p_status: status,
+                    p_operator_name: operatorName,
+                    p_expected_version: version,
+                    p_force_reset_downstream: true
+                });
                 showToast("Hasil disimpan dengan reset downstream.", "success");
-                loadAreaData(currentArea.id);
+                await loadAreaData(currentArea.id);
                 if (currentTab === "score") renderScoreTab();
-            }).catch(e => {
+            } catch (e) {
                 showToast(errorMessage(e), "error");
-            });
+            }
         }
 
         function hasUnsavedChanges() {
@@ -810,7 +814,8 @@
             const match = matches.find(m => m.id === matchId);
             if (!match) return;
 
-            if (!confirm(`Reset pertandingan ${match.match_code}?`)) return;
+            const ok1 = await showConfirm(`Reset pertandingan ${match.match_code}?`, "YA, RESET");
+            if (!ok1) return;
 
             try {
                 await resetMatchResult({
@@ -833,7 +838,8 @@
             const match = matches.find(m => m.id === matchId);
             if (!match) return;
 
-            if (!confirm(`Reset ${match.match_code} beserta pertandingan downstream?`)) return;
+            const ok2 = await showConfirm(`Reset ${match.match_code} beserta pertandingan downstream?`, "YA, RESET");
+            if (!ok2) return;
 
             try {
                 await resetMatchResult({
@@ -856,7 +862,8 @@
                 return;
             }
 
-            if (!confirm(`RESET AKHIR: Seluruh skor ${currentArea.name} akan dihapus. Lanjutkan?`)) return;
+            const ok3 = await showConfirm(`RESET AKHIR: Seluruh skor ${currentArea.name} akan dihapus. Lanjutkan?`, "YA, RESET");
+            if (!ok3) return;
 
             try {
                 await resetArea({
@@ -894,6 +901,40 @@
             else teams.push(team);
 
             if (currentTab === "teams") renderTeamsTab();
+        }
+
+        // --- Custom Confirm Modal ---
+        function showConfirm(msg, confirmLabel = "YA") {
+            return new Promise((resolve) => {
+                const overlay = document.createElement("div");
+                overlay.className = "modal-overlay";
+                overlay.innerHTML = `
+                    <div class="modal-content confirm-modal">
+                        <p style="white-space:pre-line">${escapeHtml(msg)}</p>
+                        <div class="modal-actions">
+                            <button class="btn btn-secondary" id="confirm-no">BATAL</button>
+                            <button class="btn btn-primary" id="confirm-yes">${confirmLabel}</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+                overlay.querySelector("#confirm-yes").focus();
+
+                overlay.querySelector("#confirm-yes").addEventListener("click", () => {
+                    overlay.remove();
+                    resolve(true);
+                });
+                overlay.querySelector("#confirm-no").addEventListener("click", () => {
+                    overlay.remove();
+                    resolve(false);
+                });
+                overlay.addEventListener("click", (e) => {
+                    if (e.target === overlay) {
+                        overlay.remove();
+                        resolve(false);
+                    }
+                });
+            });
         }
 
         // --- Toast ---

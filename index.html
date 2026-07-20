@@ -207,7 +207,6 @@
                             </span>
                             <span id="last-update-label">Update: <span id="last-update">${formatTimeWIB(lastUpdate)}</span></span>
                             <button class="btn btn-small btn-secondary" id="theme-button" onclick="window.toggleTheme()" title="Aktifkan light mode">LIGHT</button>
-                            <button class="btn btn-small btn-secondary" id="display-button" onclick="window.toggleDisplayMode()" title="Mode display">TV DISPLAY</button>
                             <button class="btn btn-small btn-secondary" onclick="window.toggleFullscreen()" title="Layar penuh">[ ]</button>
                             <button class="btn btn-small btn-secondary" onclick="window.refreshData()" title="Muat ulang">R</button>
                         </div>
@@ -221,7 +220,6 @@
             renderAllBrackets();
             renderChampions();
             updateThemeControl();
-            updateDisplayControl();
             document.body.classList.toggle("view-3d", perspectiveMode);
             const perspectiveButton = document.getElementById("perspective-button");
             if (perspectiveButton) perspectiveButton.classList.toggle("is-active", perspectiveMode);
