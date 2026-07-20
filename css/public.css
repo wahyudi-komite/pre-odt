@@ -2241,6 +2241,26 @@ body.display-mode {
 
 .light-mode .area-seed { color: color-mix(in srgb, var(--sport-accent) 72%, #123b2c); }
 /* Restored fullscreen area on refresh */
+body.area-fullscreen-restored-mode {
+    height: 100dvh;
+    overflow: hidden;
+}
+
+.area-fullscreen-restored-mode #app,
+.area-fullscreen-restored-mode #areas-container {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+.area-fullscreen-restored-mode .public-header,
+.area-fullscreen-restored-mode .area-summary-panel {
+    display: none !important;
+}
+
 .area-hidden {
     display: none !important;
 }
@@ -2248,6 +2268,7 @@ body.display-mode {
 .area-section.area-fullscreen-restored {
     --fullscreen-header-height: clamp(64px, 7vh, 110px);
     width: 100vw;
+    height: 100dvh;
     max-width: none;
     max-height: none;
     grid-column: auto;

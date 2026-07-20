@@ -35,6 +35,12 @@
         import {
             formatTimeWIB, escapeHtml
         } from "./js/utils.js";
+        import {
+            readFullscreenArea,
+            saveFullscreenArea,
+            clearFullscreenArea,
+            resolveFullscreenArea
+        } from "./js/fullscreen-area-state.js";
 
         // --- State ---
         let tournament = null;
@@ -96,7 +102,6 @@
 
                 lastUpdate = new Date();
                 renderFull();
-                restoreFullscreenArea();
 
                 subscribeAll((table, payload) => {
                     handleRealtimeChange(table, payload);
@@ -333,7 +338,7 @@
                             </div>
                             <div class="area-header-actions">
                                 <span class="area-progress">${finished}/8 selesai - ${progress}%</span>
-                                <button type="button" class="area-fullscreen-btn" onclick="window.toggleAreaFullscreen('${area.id}')" title="Fullscreen ${escapeHtml(area.name)}" aria-label="Fullscreen ${escapeHtml(area.name)}">
+                                <button type="button" class="area-fullscreen-btn" onclick="window.handleAreaFullscreen('${area.id}')" title="Fullscreen ${escapeHtml(area.name)}" aria-label="Fullscreen ${escapeHtml(area.name)}">
                                     <span class="area-fullscreen-open">FULL</span>
                                     <span class="area-fullscreen-close">EXIT</span>
                                 </button>
@@ -355,6 +360,7 @@
             }
 
             renderChampions();
+            restoreFullscreenArea();
         }
 
         function renderBracketSection(areaId) {
@@ -490,17 +496,27 @@
         };
 
         function restoreFullscreenArea() {
-            const savedAreaId = (() => { try { return localStorage.getItem("gfy_fullscreen_area"); } catch (_) { return null; } })();
-            if (!savedAreaId) return;
+            const savedAreaId = readFullscreenArea(localStorage);
+            const validAreaId = resolveFullscreenArea(savedAreaId, areas.map(area => area.id));
 
-            const section = document.querySelector(`.area-section[data-area-id="${savedAreaId}"]`);
-            if (!section) return;
+            if (!validAreaId) {
+                if (savedAreaId) clearFullscreenArea(localStorage);
+                return;
+            }
 
-            document.querySelectorAll(".area-section").forEach(s => {
-                if (s.dataset.areaId !== savedAreaId) s.classList.add("area-hidden");
+            const section = document.querySelector(`.area-section[data-area-id="${validAreaId}"]`);
+            if (!section) {
+                clearFullscreenArea(localStorage);
+                return;
+            }
+
+            document.body.classList.add("area-fullscreen-restored-mode");
+            document.querySelectorAll(".area-section").forEach(candidate => {
+                candidate.classList.toggle("area-hidden", candidate.dataset.areaId !== validAreaId);
             });
             section.classList.add("area-fullscreen-restored");
-            fullscreenAreaId = savedAreaId;
+            fullscreenAreaId = validAreaId;
+            requestAnimationFrame(() => redrawAreaBracket(validAreaId));
         }
 
         window.toggleFullscreen = function () {
@@ -511,30 +527,48 @@
             }
         };
 
-        window.toggleAreaFullscreen = async function (areaId) {
+        window.exitAreaFullscreen = async function () {
+            const areaId = fullscreenAreaId || readFullscreenArea(localStorage);
+
+            if (document.fullscreenElement) {
+                await document.exitFullscreen().catch(() => { });
+            }
+
+            clearFullscreenArea(localStorage);
+            fullscreenAreaId = null;
+            document.body.classList.remove("area-fullscreen-restored-mode");
+            document.querySelectorAll(".area-section").forEach(section => {
+                section.classList.remove("area-hidden", "area-fullscreen-restored");
+            });
+            renderAllBrackets();
+
+            if (areaId) requestAnimationFrame(() => redrawAreaBracket(areaId));
+        };
+
+        window.handleAreaFullscreen = async function (areaId) {
             const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
             if (!section) return;
 
-            if (section.classList.contains("area-fullscreen-restored")) {
-                document.querySelectorAll(".area-section").forEach(s => s.classList.remove("area-hidden", "area-fullscreen-restored"));
-                fullscreenAreaId = null;
-                try { localStorage.removeItem("gfy_fullscreen_area"); } catch (_) {}
+            const isSelected = fullscreenAreaId === areaId
+                || section.classList.contains("area-fullscreen-restored")
+                || document.fullscreenElement === section;
+
+            if (isSelected) {
+                await window.exitAreaFullscreen();
                 return;
             }
 
+            fullscreenAreaId = areaId;
+            saveFullscreenArea(localStorage, areaId);
+
             try {
-                fullscreenAreaId = areaId;
-                if (document.fullscreenElement === section) {
-                    await document.exitFullscreen();
-                } else {
-                    if (document.fullscreenElement) await document.exitFullscreen();
-                    await section.requestFullscreen();
-                }
-                try { localStorage.setItem("gfy_fullscreen_area", fullscreenAreaId || ""); } catch (_) {}
+                if (document.fullscreenElement) await document.exitFullscreen();
+                await section.requestFullscreen();
             } catch (err) {
-                fullscreenAreaId = null;
+                document.body.classList.add("area-fullscreen-restored-mode");
+                restoreFullscreenArea();
                 console.error(err);
-                showToast("Fullscreen area tidak dapat diaktifkan.", "error");
+                showToast("Fullscreen browser tidak dapat diaktifkan. Area tetap difokuskan.", "warning");
             }
         };
 
@@ -542,12 +576,13 @@
             const activeArea = document.fullscreenElement?.classList.contains("area-section")
                 ? document.fullscreenElement
                 : null;
-            const areaId = activeArea?.dataset.areaId || fullscreenAreaId;
-            fullscreenAreaId = activeArea?.dataset.areaId || null;
-            try { localStorage.setItem("gfy_fullscreen_area", fullscreenAreaId || ""); } catch (_) {}
+            const areaId = activeArea?.dataset.areaId || fullscreenAreaId || readFullscreenArea(localStorage);
 
-            if (areaId) {
-                requestAnimationFrame(() => redrawAreaBracket(areaId));
+            if (activeArea) {
+                fullscreenAreaId = activeArea.dataset.areaId;
+                requestAnimationFrame(() => redrawAreaBracket(fullscreenAreaId));
+            } else if (areaId) {
+                restoreFullscreenArea();
             }
         });
 
