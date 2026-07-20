@@ -107,12 +107,15 @@
 }
 
 .admin-area-badge {
-    background: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary), #27ae60);
     color: #fff;
-    padding: 2px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 700;
+    padding: 6px 20px;
+    border-radius: 24px;
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 12px rgba(46,204,113,0.4);
+    text-transform: uppercase;
 }
 
 .admin-header-info {
@@ -141,25 +144,25 @@
 }
 
 .area-picker h2 {
-    font-size: 20px;
-    margin-bottom: 24px;
+    font-size: 36px;
+    margin-bottom: 40px;
     color: var(--color-text);
 }
 
 .area-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    max-width: 500px;
+    gap: 28px;
+    max-width: 1200px;
     width: 100%;
 }
 
 .area-btn {
     background: var(--color-surface);
-    border: 2px solid var(--color-border);
+    border: 4px solid var(--color-border);
     border-radius: var(--radius-lg);
-    padding: 20px 16px;
-    font-size: 16px;
+    padding: 80px 48px;
+    font-size: 36px;
     font-weight: 700;
     color: var(--color-text);
     transition: all 0.2s;
@@ -175,6 +178,36 @@
     border-color: var(--color-primary);
     background: rgba(46,204,113,0.15);
     color: var(--color-primary);
+}
+
+.btn-pink {
+    background: #e84393;
+    color: #fff;
+    font-size: 16px;
+    padding: 14px 28px;
+}
+.btn-pink:hover {
+    background: #d63384;
+}
+
+.theme-toggle-btn {
+    background: var(--color-surface-light);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    min-width: 56px;
+    text-align: center;
+}
+.theme-toggle-btn:hover {
+    background: rgba(255,255,255,0.15);
+}
+
+.login-theme-btn {
+    margin-top: 16px;
+    padding: 8px 20px;
+    font-size: 13px;
+    border-radius: var(--radius);
+    font-weight: 600;
+    cursor: pointer;
 }
 
 /* Admin tabs */
@@ -480,6 +513,114 @@
     max-width: 300px;
 }
 
+/* ============================================
+   Light Mode — admin.html
+   ============================================ */
+body.light-mode {
+    --color-bg: #eef5f0;
+    --color-surface: #ffffff;
+    --color-surface-light: #dfece4;
+    --color-text: #132b24;
+    --color-text-muted: #63776e;
+    --color-border: rgba(24, 84, 60, 0.16);
+    --color-danger: #c0392b;
+    background: var(--color-bg);
+}
+
+.light-mode .login-card {
+    box-shadow: 0 8px 32px rgba(31, 77, 57, 0.12);
+}
+
+.light-mode .area-btn {
+    border-color: rgba(24, 84, 60, 0.2);
+    background: #f8fbf9;
+    color: var(--color-text);
+}
+
+.light-mode .area-btn:hover {
+    border-color: var(--color-primary);
+    background: rgba(46, 204, 113, 0.08);
+}
+
+.light-mode .admin-header {
+    background: rgba(248, 252, 248, 0.92);
+    border-bottom-color: rgba(24, 84, 60, 0.16);
+    box-shadow: 0 2px 12px rgba(31, 77, 57, 0.06);
+}
+
+.light-mode .admin-header-left h1 {
+    color: var(--color-text);
+}
+
+.light-mode .admin-tabs {
+    background: rgba(248, 252, 248, 0.92);
+    border-bottom-color: rgba(24, 84, 60, 0.16);
+}
+
+.light-mode .admin-tab {
+    color: var(--color-text-muted);
+}
+
+.light-mode .admin-tab:hover {
+    color: var(--color-text);
+}
+
+.light-mode .match-input-card {
+    background: #ffffff;
+    border-color: rgba(24, 84, 60, 0.14);
+    box-shadow: 0 2px 8px rgba(31, 77, 57, 0.04);
+}
+
+.light-mode .match-unavailable {
+    background: #f8fbf9;
+    border-color: rgba(24, 84, 60, 0.14);
+}
+
+.light-mode .team-edit-row input[type="text"],
+.light-mode .form-group input,
+.light-mode .settings-section select,
+.light-mode #reset-area-confirm,
+.light-mode #reset-match-select {
+    background: #ffffff;
+    border-color: rgba(24, 84, 60, 0.2);
+    color: var(--color-text);
+}
+
+.light-mode .audit-item {
+    background: #ffffff;
+    border-color: rgba(24, 84, 60, 0.14);
+}
+
+.light-mode .settings-section {
+    border-top-color: rgba(24, 84, 60, 0.12) !important;
+}
+
+.light-mode .btn-secondary {
+    background: rgba(24, 84, 60, 0.08);
+    color: var(--color-text);
+}
+
+.light-mode .btn-secondary:hover {
+    background: rgba(24, 84, 60, 0.16);
+}
+
+.light-mode .penalty-section {
+    background: rgba(192, 57, 43, 0.06);
+    border-color: rgba(192, 57, 43, 0.15);
+}
+
+.light-mode .theme-toggle-btn {
+    border-color: rgba(24, 84, 60, 0.2);
+    background: rgba(255, 255, 255, 0.88);
+    color: #183c2e;
+}
+
+.light-mode .theme-toggle-btn:hover {
+    border-color: rgba(15, 143, 83, 0.52);
+    background: rgba(38, 184, 105, 0.12);
+    color: #08784a;
+}
+
 /* Responsive admin */
 @media (max-width: 768px) {
     .admin-header {
@@ -496,12 +637,17 @@
 
     .area-grid {
         grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
+        gap: 16px;
+        max-width: 100%;
     }
 
     .area-btn {
-        padding: 14px 10px;
-        font-size: 14px;
+        padding: 40px 24px;
+        font-size: 24px;
+    }
+
+    .area-picker h2 {
+        font-size: 28px;
     }
 
     .admin-tabs {
@@ -529,6 +675,17 @@
 @media (max-width: 480px) {
     .area-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        max-width: 100%;
+    }
+
+    .area-btn {
+        padding: 32px 20px;
+        font-size: 20px;
+    }
+
+    .area-picker h2 {
+        font-size: 24px;
     }
 
     .admin-header {

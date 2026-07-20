@@ -45,6 +45,7 @@
         let matchVersions = {};
         let activeChannels = [];
         let session = null;
+        let lightMode = false;
 
         const root = document.getElementById("app");
 
@@ -102,6 +103,8 @@
                 localStorage.setItem("gfy_opname", operatorName);
                 session = data.session;
 
+                localStorage.removeItem("gfy_last_area");
+
                 showToast("Login berhasil.", "success");
                 await loadAdmin();
             } catch (err) {
@@ -150,6 +153,7 @@
                         </div>
                         <button class="btn btn-primary" id="login-btn" onclick="window.loginHandler()">MASUK</button>
                     </div>
+                    <button class="theme-toggle-btn login-theme-btn" onclick="window.toggleTheme()">${lightMode ? "DARK" : "LIGHT"}</button>
                 </div>
             `;
 
@@ -172,7 +176,10 @@
                             </button>
                         `).join("")}
                     </div>
-                    <button class="btn btn-secondary btn-small" style="margin-top:24px" onclick="window.logoutHandler()">LOGOUT</button>
+                    <div style="display:flex;gap:12px;margin-top:32px">
+                        <button class="btn btn-pink" onclick="window.logoutHandler()">LOGOUT</button>
+                        <button class="btn theme-toggle-btn" onclick="window.toggleTheme()">${lightMode ? "DARK" : "LIGHT"}</button>
+                    </div>
                 </div>
             `;
 
@@ -212,6 +219,28 @@
 
         window.logoutHandler = logout;
 
+        // --- Theme ---
+        function initTheme() {
+            try { lightMode = localStorage.getItem("pre-odt-theme") === "light"; } catch (_) { lightMode = false; }
+            document.body.classList.toggle("light-mode", lightMode);
+            const btn = document.getElementById("theme-btn");
+            if (btn) {
+                btn.textContent = lightMode ? "DARK" : "LIGHT";
+                btn.classList.toggle("is-active", lightMode);
+            }
+        }
+
+        window.toggleTheme = function () {
+            lightMode = !lightMode;
+            document.body.classList.toggle("light-mode", lightMode);
+            try { localStorage.setItem("pre-odt-theme", lightMode ? "light" : "dark"); } catch (_) {}
+            const btn = document.getElementById("theme-btn");
+            if (btn) {
+                btn.textContent = lightMode ? "DARK" : "LIGHT";
+                btn.classList.toggle("is-active", lightMode);
+            }
+        };
+
         // --- Load Area Data ---
         async function loadAreaData(areaId) {
             try {
@@ -250,6 +279,7 @@
                         <button class="btn btn-small btn-secondary" onclick="window.showAreaPicker()">GANTI AREA</button>
                         <button class="btn btn-small btn-secondary" onclick="window.openPublicMonitor()">MONITORING PUBLIK</button>
                         <button class="btn btn-small btn-secondary" onclick="window.refreshAdminData()">REFRESH</button>
+                        <button class="btn btn-small theme-toggle-btn" id="theme-btn" onclick="window.toggleTheme()">LIGHT</button>
                         <button class="btn btn-small btn-secondary" onclick="window.logoutHandler()">LOGOUT</button>
                     </div>
                 </div>
@@ -263,6 +293,7 @@
 
                 <div class="admin-content" id="tab-content"></div>
             `;
+            initTheme();
         }
 
         window.refreshAdminData = async function() {
@@ -899,7 +930,24 @@
                 }
 
                 areas = await fetchAreas(tournament.id);
-                renderAreaPicker();
+
+                const lastAreaId = localStorage.getItem("gfy_last_area");
+                const savedArea = areas.find(a => a.id === lastAreaId);
+                if (savedArea) {
+                    currentArea = savedArea;
+                    removeAllChannels();
+                    await loadAreaData(savedArea.id);
+                    const mChannel = subscribeMatches([savedArea.id], (payload) => {
+                        handleMatchUpdate(payload);
+                    });
+                    activeChannels.push(mChannel);
+                    const tChannel = subscribeTeams([savedArea.id], (payload) => {
+                        handleTeamUpdate(payload);
+                    });
+                    activeChannels.push(tChannel);
+                } else {
+                    renderAreaPicker();
+                }
             } catch (err) {
                 console.error(err);
                 showToast("Gagal memuat data turnamen.", "error");
@@ -908,6 +956,7 @@
 
         // --- Init ---
         (async function init() {
+            initTheme();
             session = await checkSession();
             if (session) {
                 await loadAdmin();
