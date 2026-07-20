@@ -96,6 +96,7 @@
 
                 lastUpdate = new Date();
                 renderFull();
+                restoreFullscreenArea();
 
                 subscribeAll((table, payload) => {
                     handleRealtimeChange(table, payload);
@@ -488,6 +489,20 @@
             if (modal) modal.remove();
         };
 
+        function restoreFullscreenArea() {
+            const savedAreaId = (() => { try { return localStorage.getItem("gfy_fullscreen_area"); } catch (_) { return null; } })();
+            if (!savedAreaId) return;
+
+            const section = document.querySelector(`.area-section[data-area-id="${savedAreaId}"]`);
+            if (!section) return;
+
+            document.querySelectorAll(".area-section").forEach(s => {
+                if (s.dataset.areaId !== savedAreaId) s.classList.add("area-hidden");
+            });
+            section.classList.add("area-fullscreen-restored");
+            fullscreenAreaId = savedAreaId;
+        }
+
         window.toggleFullscreen = function () {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(() => { });
@@ -500,6 +515,13 @@
             const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
             if (!section) return;
 
+            if (section.classList.contains("area-fullscreen-restored")) {
+                document.querySelectorAll(".area-section").forEach(s => s.classList.remove("area-hidden", "area-fullscreen-restored"));
+                fullscreenAreaId = null;
+                try { localStorage.removeItem("gfy_fullscreen_area"); } catch (_) {}
+                return;
+            }
+
             try {
                 fullscreenAreaId = areaId;
                 if (document.fullscreenElement === section) {
@@ -508,6 +530,7 @@
                     if (document.fullscreenElement) await document.exitFullscreen();
                     await section.requestFullscreen();
                 }
+                try { localStorage.setItem("gfy_fullscreen_area", fullscreenAreaId || ""); } catch (_) {}
             } catch (err) {
                 fullscreenAreaId = null;
                 console.error(err);
@@ -521,6 +544,7 @@
                 : null;
             const areaId = activeArea?.dataset.areaId || fullscreenAreaId;
             fullscreenAreaId = activeArea?.dataset.areaId || null;
+            try { localStorage.setItem("gfy_fullscreen_area", fullscreenAreaId || ""); } catch (_) {}
 
             if (areaId) {
                 requestAnimationFrame(() => redrawAreaBracket(areaId));
