@@ -2023,6 +2023,10 @@ body.display-mode {
     }
 
     .round-quarter .match-wrapper { padding: 0; }
+    .round-quarter .match-code { font-size: clamp(7px, 0.5vw, 9px); }
+    .round-quarter .match-badge { padding: 1px 3px; font-size: clamp(5px, 0.34vw, 6px); }
+    .round-quarter .team-row { font-size: clamp(7px, 0.48vw, 9px); }
+    .round-quarter .team-score { font-size: clamp(10px, 0.7vw, 13px); }
 
     .match-wrapper { min-height: 0; padding: 1px 0; }
 
@@ -2255,6 +2259,7 @@ body.area-fullscreen-restored-mode {
 
 .area-fullscreen-restored-mode #app,
 .area-fullscreen-restored-mode #areas-container {
+    display: block;
     width: 100%;
     height: 100dvh;
     min-height: 0;
