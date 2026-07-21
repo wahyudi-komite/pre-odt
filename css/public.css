@@ -395,8 +395,8 @@
 }
 
 .podium-label {
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 900;
     text-transform: uppercase;
     margin-bottom: 2px;
 }
@@ -414,14 +414,16 @@
 .podium-gold .podium-team { color: var(--color-gold); }
 
 .podium-silver {
-    border-color: rgba(189,195,199,0.3);
+    border-color: rgba(189, 195, 199, 0.52);
+    background: linear-gradient(145deg, rgba(100, 110, 115, 0.34), rgba(11, 30, 31, 0.98));
 }
 
 .podium-silver .podium-label { color: var(--color-silver); }
 .podium-silver .podium-team { color: var(--color-silver); }
 
 .podium-bronze {
-    border-color: rgba(205,127,50,0.3);
+    border-color: rgba(205, 127, 50, 0.52);
+    background: linear-gradient(145deg, rgba(120, 70, 20, 0.34), rgba(11, 30, 31, 0.98));
 }
 
 .podium-bronze .podium-label { color: var(--color-bronze); }
@@ -1181,22 +1183,28 @@ body.public-page::before {
 
 .podium-label {
     font-family: "Barlow Condensed", sans-serif;
-    font-size: clamp(8px, 0.58vw, 11px);
-    letter-spacing: 0.12em;
+    font-size: clamp(11px, 0.75vw, 14px);
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
 }
 
 .podium-team {
     overflow: hidden;
-    font-size: clamp(8px, 0.58vw, 11px);
+    font-size: clamp(11px, 0.75vw, 14px);
+    font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
 .podium-gold {
-    padding-block: 17px;
-    border-color: rgba(241, 196, 15, 0.52);
-    background: linear-gradient(145deg, rgba(95, 78, 20, 0.34), rgba(11, 30, 31, 0.98));
+    padding-block: 34px;
+    border-color: #d4a017;
+    background: linear-gradient(145deg, #f7d44a, #d4a017, #b8860b);
+    box-shadow: 0 0 24px rgba(212, 160, 23, 0.35);
 }
+.podium-gold .podium-label,
+.podium-gold .podium-team { color: #3d2b00; }
 
 .empty-bracket {
     display: grid;
@@ -1418,21 +1426,21 @@ body.public-page::before {
 
 /* Light theme */
 body.light-mode {
-    --color-bg: #eef5f0;
+    --color-bg: #e2ebe6;
     --color-surface: #ffffff;
-    --color-surface-light: #dfece4;
-    --color-text: #132b24;
-    --color-text-muted: #63776e;
-    --color-border: rgba(24, 84, 60, 0.16);
-    --public-ink: #102a22;
-    --public-muted: #627a6f;
-    --public-panel: rgba(255, 255, 255, 0.94);
-    --public-panel-raised: rgba(247, 252, 248, 0.98);
-    --public-line: rgba(27, 104, 73, 0.18);
+    --color-surface-light: #d4e3db;
+    --color-text: #0d1f1a;
+    --color-text-muted: #4e6359;
+    --color-border: rgba(18, 74, 52, 0.22);
+    --public-ink: #0d1f1a;
+    --public-muted: #4e6359;
+    --public-panel: rgba(255, 255, 255, 0.96);
+    --public-panel-raised: rgba(250, 253, 251, 0.98);
+    --public-line: rgba(18, 74, 52, 0.25);
     background:
-        radial-gradient(circle at 14% 6%, rgba(50, 180, 116, 0.13), transparent 30rem),
-        radial-gradient(circle at 88% 28%, rgba(251, 146, 60, 0.08), transparent 24rem),
-        linear-gradient(145deg, #f8fbf7 0%, #edf5ef 48%, #e8f1eb 100%);
+        radial-gradient(circle at 14% 6%, rgba(30, 150, 96, 0.12), transparent 30rem),
+        radial-gradient(circle at 88% 28%, rgba(230, 120, 40, 0.08), transparent 24rem),
+        linear-gradient(145deg, #eff5f2 0%, #e2ebe6 48%, #d8e3dc 100%);
 }
 
 body.light-mode::before {
@@ -1553,8 +1561,22 @@ body.light-mode::before {
 }
 
 .light-mode .podium-gold {
-    border-color: rgba(193, 151, 13, 0.48);
-    background: linear-gradient(145deg, rgba(255, 248, 211, 0.98), rgba(243, 248, 239, 0.98));
+    padding-block: 34px;
+    border-color: #d4a017;
+    background: linear-gradient(145deg, #f7d44a, #d4a017, #b8860b);
+    box-shadow: 0 0 24px rgba(212, 160, 23, 0.25);
+}
+.light-mode .podium-gold .podium-label,
+.light-mode .podium-gold .podium-team { color: #3d2b00; }
+
+.light-mode .podium-silver {
+    border-color: rgba(149, 165, 166, 0.48);
+    background: linear-gradient(145deg, rgba(236, 240, 241, 0.98), rgba(243, 248, 239, 0.98));
+}
+
+.light-mode .podium-bronze {
+    border-color: rgba(184, 115, 51, 0.48);
+    background: linear-gradient(145deg, rgba(250, 235, 215, 0.98), rgba(243, 248, 239, 0.98));
 }
 
 .light-mode .connector-shadow {
@@ -1569,6 +1591,12 @@ body.light-mode::before {
     border-color: rgba(28, 105, 73, 0.2);
     background: #f8fcf8;
     color: #16382b;
+}
+
+.light-mode .live-badge {
+    border-color: rgba(221, 107, 32, 0.35);
+    background: rgba(251, 146, 60, 0.07);
+    color: #b85a1a;
 }
 
 /* One-screen TV display */

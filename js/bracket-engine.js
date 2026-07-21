@@ -125,7 +125,7 @@ function createMatchCard(match, matchMap, teamMap) {
     if (match.winner_team_id === t1.id) {
       const check = document.createElement("span");
       check.className = "check-icon";
-      check.textContent = "\u2713 ";
+      check.textContent = "🏆 ";
       t1Name.prepend(check);
     }
     t1Name.append(document.createTextNode(t1.name));
@@ -157,7 +157,7 @@ function createMatchCard(match, matchMap, teamMap) {
     if (match.winner_team_id === t2.id) {
       const check = document.createElement("span");
       check.className = "check-icon";
-      check.textContent = "\u2713 ";
+      check.textContent = "🏆 ";
       t2Name.prepend(check);
     }
     t2Name.append(document.createTextNode(t2.name));

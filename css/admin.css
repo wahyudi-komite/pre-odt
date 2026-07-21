@@ -517,12 +517,12 @@
    Light Mode — admin.html
    ============================================ */
 body.light-mode {
-    --color-bg: #eef5f0;
+    --color-bg: #e2ebe6;
     --color-surface: #ffffff;
-    --color-surface-light: #dfece4;
-    --color-text: #132b24;
-    --color-text-muted: #63776e;
-    --color-border: rgba(24, 84, 60, 0.16);
+    --color-surface-light: #d4e3db;
+    --color-text: #0d1f1a;
+    --color-text-muted: #4e6359;
+    --color-border: rgba(18, 74, 52, 0.22);
     --color-danger: #c0392b;
     background: var(--color-bg);
 }
