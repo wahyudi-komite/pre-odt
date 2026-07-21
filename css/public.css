@@ -1805,10 +1805,14 @@ body.display-mode {
     gap: 3px;
 }
 
-.display-mode .podium-item,
-.display-mode .podium-gold {
+.display-mode .podium-item {
     min-height: 0;
     padding: 4px 3px;
+    border-radius: 2px 6px 2px 6px;
+}
+.display-mode .podium-gold {
+    min-height: 0;
+    padding: 8px 6px;
     border-radius: 2px 6px 2px 6px;
 }
 
@@ -2081,10 +2085,14 @@ body.display-mode {
     .team-score { min-width: 12px; font-size: clamp(9px, 0.62vw, 12px); }
     .round-podium { gap: 3px; }
 
-    .podium-item,
-    .podium-gold {
+    .podium-item {
         min-height: 0;
         padding: 4px 3px;
+        border-radius: 7px;
+    }
+    .podium-gold {
+        min-height: 0;
+        padding: 8px 6px;
         border-radius: 7px;
     }
 
@@ -2203,8 +2211,8 @@ body.display-mode {
         font-size: clamp(13px, 0.75vw, 17px);
     }
 
-    .podium-item,
-    .podium-gold { padding: 6px 5px; }
+    .podium-item { padding: 6px 5px; }
+    .podium-gold { padding: 12px 10px; }
 
     .podium-label,
     .podium-team { font-size: clamp(8px, 0.48vw, 11px); }
@@ -2251,8 +2259,8 @@ body.display-mode {
 
     .team-score { min-width: 24px; font-size: clamp(20px, 0.62vw, 25px); }
 
-    .podium-item,
-    .podium-gold { padding: 9px 7px; }
+    .podium-item { padding: 9px 7px; }
+    .podium-gold { padding: 18px 14px; }
 
     .podium-label,
     .podium-team { font-size: clamp(12px, 0.4vw, 16px); }
@@ -2417,9 +2425,12 @@ body.area-fullscreen-restored-mode {
 .area-section.area-fullscreen-restored .round-podium {
     gap: clamp(8px, 1vh, 18px);
 }
-.area-section.area-fullscreen-restored .podium-item,
-.area-section.area-fullscreen-restored .podium-gold {
+.area-section.area-fullscreen-restored .podium-item {
     padding: clamp(12px, 1.5vh, 28px) clamp(8px, 0.7vw, 16px);
+    border-radius: clamp(9px, 0.7vw, 16px);
+}
+.area-section.area-fullscreen-restored .podium-gold {
+    padding: clamp(24px, 3vh, 56px) clamp(8px, 0.7vw, 16px);
     border-radius: clamp(9px, 0.7vw, 16px);
 }
 .area-section.area-fullscreen-restored .podium-label,
@@ -2603,9 +2614,12 @@ body.area-fullscreen-restored-mode {
     gap: clamp(8px, 1vh, 18px);
 }
 
-.area-section:fullscreen .podium-item,
-.area-section:fullscreen .podium-gold {
+.area-section:fullscreen .podium-item {
     padding: clamp(12px, 1.5vh, 28px) clamp(8px, 0.7vw, 16px);
+    border-radius: clamp(9px, 0.7vw, 16px);
+}
+.area-section:fullscreen .podium-gold {
+    padding: clamp(24px, 3vh, 56px) clamp(8px, 0.7vw, 16px);
     border-radius: clamp(9px, 0.7vw, 16px);
 }
 
