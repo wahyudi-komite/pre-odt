@@ -4,7 +4,7 @@
     --color-surface-light: #1b2d5e;
     --color-primary: #2ecc71;
     --color-primary-dark: #27ae60;
-    --color-live: #f39c12;
+    --color-live: #ef4444;
     --color-success: #2ecc71;
     --color-danger: #e74c3c;
     --color-gold: #f1c40f;
@@ -285,7 +285,7 @@ a:hover {
 }
 
 .badge-live {
-    background: rgba(243,156,18,0.2);
+    background: rgba(239, 68, 68, 0.18);
     color: var(--color-live);
     animation: pulse 2s infinite;
 }
