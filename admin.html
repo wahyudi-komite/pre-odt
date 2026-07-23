@@ -14,7 +14,7 @@
 <body>
     <div id="app">
         <div class="loading-state" id="initial-loading">
-            <div class="loading-spinner" style="width:36px;height:36px"></div>
+            <img src="./assets/odt-logo.png" alt="Memuat..." class="loading-odt-logo" />
             <p>Memuat...</p>
         </div>
     </div>
@@ -701,7 +701,7 @@
             const el = document.getElementById("tab-content");
             if (!el) return;
 
-            el.innerHTML = '<div class="loading-state"><div class="loading-spinner"></div><p>Memuat riwayat...</p></div>';
+            el.innerHTML = '<div class="loading-state"><img src="./assets/odt-logo.png" alt="Memuat..." class="loading-odt-logo" /><p>Memuat riwayat...</p></div>';
 
             try {
                 auditLogs = await fetchAuditLogs(currentArea.id, 30);

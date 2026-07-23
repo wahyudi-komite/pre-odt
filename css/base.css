@@ -222,6 +222,36 @@ a:hover {
     to { transform: rotate(360deg); }
 }
 
+.loading-odt-logo {
+    width: 68px;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 12px rgba(74, 222, 128, 0.35));
+    animation: odt-bounce 1.2s cubic-bezier(0.28, 0.84, 0.42, 1) infinite;
+    will-change: transform, filter;
+}
+
+@keyframes odt-bounce {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 12px rgba(74, 222, 128, 0.35));
+    }
+    40% {
+        transform: translateY(-22px) scale(1.06, 0.94);
+        filter: drop-shadow(0 22px 28px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 20px rgba(74, 222, 128, 0.6));
+    }
+    50% {
+        transform: translateY(-26px) scale(1);
+    }
+    70% {
+        transform: translateY(0) scale(0.96, 1.04);
+        filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4)) drop-shadow(0 0 8px rgba(74, 222, 128, 0.2));
+    }
+    85% {
+        transform: translateY(-6px) scale(1.02, 0.98);
+    }
+}
+
 .loading-state {
     display: flex;
     flex-direction: column;
