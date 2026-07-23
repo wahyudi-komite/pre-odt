@@ -169,3 +169,7 @@ INSERT INTO matches (area_id, match_code, stage, display_order) VALUES (...);
 - Password admin **tidak boleh** disimpan di source code
 - Jangan nonaktifkan RLS pada tabel mana pun
 - Semua perubahan data harus melalui RPC, bukan direct table access
+
+
+
+npx browser-sync start --server --files "**/*.html,**/*.css,**/*.js" --port 8080 --no-open
