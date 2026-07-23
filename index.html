@@ -185,9 +185,18 @@
             `;
         }
 
+        let clockTimer = null;
+
         function updateLastUpdate() {
             const el = document.getElementById("last-update");
-            if (el) el.textContent = formatTimeWIB(lastUpdate);
+            if (el) el.textContent = formatTimeWIB(new Date());
+        }
+
+        function startLiveClock() {
+            updateLastUpdate();
+            if (!clockTimer) {
+                clockTimer = setInterval(updateLastUpdate, 1000);
+            }
         }
 
         // --- Render Full ---
@@ -227,6 +236,7 @@
             if (perspectiveButton) perspectiveButton.classList.toggle("is-active", perspectiveMode);
 
             monitorConnection();
+            startLiveClock();
         }
 
         function renderChampions() {
