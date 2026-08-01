@@ -865,8 +865,8 @@ body.public-page::before {
 }
 
 .odt-logo-panel {
-    grid-column: 5 / span 2;
-    grid-row: 3;
+    grid-column: 5 / span 1;
+    grid-row: 5;
     position: relative;
     margin: 0;
     padding: 0;
@@ -909,9 +909,9 @@ body.public-page::before {
 
 .odt-logo-img {
     width: auto;
-    max-width: 175px;
+    max-width: 88px;
     height: auto;
-    max-height: 165px;
+    max-height: 83px;
     object-fit: contain;
     filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.5));
     animation: odt-logo-pulse 2.8s ease-in-out infinite;
@@ -3053,8 +3053,15 @@ body.area-fullscreen-restored-mode {
 }
 
 @keyframes qualifierPulse {
-    0%, 100% { opacity: 0.5; }
-    50% { opacity: 1; }
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
 }
 
 /* Final Pending */
