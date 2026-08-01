@@ -571,6 +571,201 @@
             btn.innerHTML = "SIMPAN";
         };
 
+        // --- Fun Game Score Tab Admin ---
+        function renderFunGameScoreTab() {
+            const el = document.getElementById("tab-content");
+            if (!el) return;
+
+            const teamMap = {};
+            for (const t of teams) teamMap[t.id] = t;
+
+            const b1Entries = funGameEntries.filter(e => e.phase === "batch_1");
+            const b2Entries = funGameEntries.filter(e => e.phase === "batch_2");
+            const finalEntries = funGameEntries.filter(e => e.phase === "final");
+
+            let html = `
+                <div class="fg-admin-info" style="margin-bottom:16px;padding:12px;background:var(--color-surface);border-radius:var(--radius);border:1px solid var(--color-border)">
+                    <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">FUN GAME CONTROL PANEL (AREA 7)</h3>
+                    <p style="font-size:12px;color:var(--color-text-muted);margin:0">
+                        Input jumlah WIN untuk Tarik Tambang (Poin = WIN × 2), serta Peringkat 1-4 untuk Lomba Sarung dan Bola (Peringkat 1=3pt, 2=2pt, 3=1pt, 4=0pt).
+                    </p>
+                </div>
+            `;
+
+            html += renderFunGamePhaseAdmin("BATCH 1 (TIM 1 - 4)", "batch_1", b1Entries, teamMap);
+            html += renderFunGamePhaseAdmin("BATCH 2 (TIM 5 - 8)", "batch_2", b2Entries, teamMap);
+
+            if (finalEntries.length > 0) {
+                html += renderFunGamePhaseAdmin("FINAL (TOP 2 BATCH 1 & BATCH 2)", "final", finalEntries, teamMap);
+            } else {
+                html += `
+                    <div class="fg-admin-card" style="margin-top:16px;padding:16px;background:var(--color-surface);border-radius:var(--radius);border:1px solid var(--color-border);text-align:center">
+                        <h4 style="margin-bottom:8px">FASE FINAL</h4>
+                        <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">Peringkat 1 & 2 dari masing-masing Batch dapat dipromosikan ke Final.</p>
+                        <button class="btn btn-primary btn-small" onclick="window.promoteFunGameToFinal()">PROMOSIKAN TOP 2 KE FINAL</button>
+                    </div>
+                `;
+            }
+
+            el.innerHTML = html;
+        }
+
+        function renderFunGamePhaseAdmin(title, phase, entries, teamMap) {
+            let rows = "";
+            const rankOptions = (val) => `
+                <option value="" ${val == null ? 'selected' : ''}>-</option>
+                <option value="1" ${val == 1 ? 'selected' : ''}>Rank 1 (3pt)</option>
+                <option value="2" ${val == 2 ? 'selected' : ''}>Rank 2 (2pt)</option>
+                <option value="3" ${val == 3 ? 'selected' : ''}>Rank 3 (1pt)</option>
+                <option value="4" ${val == 4 ? 'selected' : ''}>Rank 4 (0pt)</option>
+            `;
+
+            entries.forEach(e => {
+                const t = teamMap[e.team_id];
+                const tName = t ? t.name : "Tim " + e.team_id;
+                rows += `
+                    <tr data-entry-id="${e.id}" data-version="${e.version}">
+                        <td style="font-weight:600;padding:8px">${escapeHtml(tName)}</td>
+                        <td style="padding:4px"><input type="number" class="fg-in-tt-wins" min="0" value="${e.tt_wins || 0}" style="width:60px;padding:4px;border-radius:4px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text)"></td>
+                        <td style="padding:4px"><select class="fg-in-sarung-rank" style="padding:4px;border-radius:4px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text)">${rankOptions(e.sarung_rank)}</select></td>
+                        <td style="padding:4px"><select class="fg-in-bola-rank" style="padding:4px;border-radius:4px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text)">${rankOptions(e.bola_rank)}</select></td>
+                        <td style="padding:4px"><input type="number" class="fg-in-final-rank" min="1" max="4" placeholder="Auto" value="${e.final_rank || ''}" style="width:50px;padding:4px;border-radius:4px;border:1px solid var(--color-border);background:var(--color-bg);color:var(--color-text)"></td>
+                        <td style="font-weight:700;padding:8px;text-align:center">${e.total_points || 0}</td>
+                    </tr>
+                `;
+            });
+
+            return `
+                <div class="fg-admin-card" style="margin-bottom:16px;padding:16px;background:var(--color-surface);border-radius:var(--radius);border:1px solid var(--color-border)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                        <h4 style="font-size:13px;font-weight:700;text-transform:uppercase">${title}</h4>
+                        <button class="btn btn-primary btn-small" onclick="window.saveFunGamePhaseBatch('${phase}')">SIMPAN ${phase.toUpperCase()}</button>
+                    </div>
+                    <div style="overflow-x:auto">
+                        <table class="admin-fg-table" style="width:100%;border-collapse:collapse;font-size:12px" data-phase="${phase}">
+                            <thead>
+                                <tr style="border-bottom:1px solid var(--color-border);text-align:left;color:var(--color-text-muted)">
+                                    <th style="padding:6px">NAMA TIM</th>
+                                    <th style="padding:6px">TT WIN</th>
+                                    <th style="padding:6px">SARUNG RANK</th>
+                                    <th style="padding:6px">BOLA RANK</th>
+                                    <th style="padding:6px">TIE RANK</th>
+                                    <th style="padding:6px;text-align:center">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.saveFunGamePhaseBatch = async function(phase) {
+            const table = document.querySelector(`table[data-phase="${phase}"]`);
+            if (!table) return;
+
+            const trs = table.querySelectorAll("tbody tr");
+            const payload = [];
+
+            trs.forEach(tr => {
+                const id = tr.dataset.entryId;
+                const expected_version = parseInt(tr.dataset.version);
+                const tt_wins = parseInt(tr.querySelector(".fg-in-tt-wins").value) || 0;
+                const sarungVal = tr.querySelector(".fg-in-sarung-rank").value;
+                const bolaVal = tr.querySelector(".fg-in-bola-rank").value;
+                const finalRankVal = tr.querySelector(".fg-in-final-rank").value;
+
+                payload.push({
+                    id: id,
+                    expected_version: expected_version,
+                    tt_wins: tt_wins,
+                    sarung_rank: sarungVal ? parseInt(sarungVal) : null,
+                    bola_rank: bolaVal ? parseInt(bolaVal) : null,
+                    final_rank: finalRankVal ? parseInt(finalRankVal) : null
+                });
+            });
+
+            try {
+                await saveFunGameBatch({
+                    p_entries: payload,
+                    p_operator_name: operatorName
+                });
+                showToast(`Data ${phase.toUpperCase()} berhasil disimpan.`, "success");
+                await loadAreaData(currentArea.id);
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
+        window.promoteFunGameToFinal = async function() {
+            const b1 = funGameEntries.filter(e => e.phase === "batch_1").sort((a,b) => (b.total_points||0) - (a.total_points||0));
+            const b2 = funGameEntries.filter(e => e.phase === "batch_2").sort((a,b) => (b.total_points||0) - (a.total_points||0));
+
+            if (b1.length < 2 || b2.length < 2) {
+                showToast("Data Batch 1 & 2 belum lengkap.", "error");
+                return;
+            }
+
+            const b1Top2 = b1.slice(0, 2).map(e => e.team_id);
+            const b2Top2 = b2.slice(0, 2).map(e => e.team_id);
+
+            const ok = await showConfirm("Promosikan Peringkat 1 & 2 dari Batch 1 dan Batch 2 ke Final?", "YA, PROMOSIKAN");
+            if (!ok) return;
+
+            try {
+                await promoteFunGameFinalists({
+                    p_area_id: currentArea.id,
+                    p_operator_name: operatorName,
+                    p_batch1_team_ids: b1Top2,
+                    p_batch2_team_ids: b2Top2
+                });
+                showToast("Top 2 berhasil dipromosikan ke Final!", "success");
+                await loadAreaData(currentArea.id);
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
+        function renderFunGameSettingsTab() {
+            const el = document.getElementById("tab-content");
+            if (!el) return;
+
+            el.innerHTML = `
+                <div class="settings-section">
+                    <h3 style="color:var(--color-danger)">Reset Data Fun Game</h3>
+                    <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">Mengosongkan seluruh poin Fun Game dan menghapus entri Final.</p>
+                    <div class="form-group">
+                        <label>Ketik <strong>RESET FUN GAME</strong> untuk konfirmasi</label>
+                        <input type="text" id="reset-fg-confirm" placeholder="RESET FUN GAME" style="background:var(--color-bg);color:var(--color-text);border:1px solid var(--color-border);border-radius:var(--radius);padding:8px 12px;width:100%;max-width:300px">
+                    </div>
+                    <button class="btn btn-danger btn-small" onclick="window.resetFullFunGame()">RESET FUN GAME</button>
+                </div>
+            `;
+        }
+
+        window.resetFullFunGame = async function() {
+            const input = document.getElementById("reset-fg-confirm");
+            if (!input || input.value !== "RESET FUN GAME") {
+                showToast("Teks konfirmasi tidak sesuai.", "error");
+                return;
+            }
+
+            const ok = await showConfirm("Yakin ingin mereset seluruh data Fun Game Area 7?", "YA, RESET");
+            if (!ok) return;
+
+            try {
+                await resetFunGame({
+                    p_area_id: currentArea.id,
+                    p_operator_name: operatorName,
+                    p_confirmation_text: "RESET FUN GAME"
+                });
+                showToast("Fun Game berhasil direset.", "success");
+                await loadAreaData(currentArea.id);
+            } catch (err) {
+                showToast(errorMessage(err), "error");
+            }
+        };
+
         async function handleDownstreamConflict(matchId) {
             const ok = await showConfirm("Pertandingan terdampak yang sudah memiliki hasil akan direset. Reset & simpan?");
             if (!ok) return;
