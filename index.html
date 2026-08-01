@@ -439,13 +439,15 @@
 
             if (filterArea === "all" && visibleCount > 0) {
                 html += `
-                    <section class="champions-section area-summary-panel" id="champions-section"></section>
-                    <section class="odt-logo-panel" id="odt-logo-panel">
-                        <div class="odt-logo-card">
-                            <img src="./assets/odt-logo.png" alt="One Daihatsu Tournament Logo" class="odt-logo-img" />
-                            <div class="odt-logo-title">ONE DAIHATSU TOURNAMENT</div>
-                        </div>
-                    </section>
+                    <div class="bottom-summary-logo-row">
+                        <section class="champions-section area-summary-panel" id="champions-section"></section>
+                        <section class="odt-logo-panel" id="odt-logo-panel">
+                            <div class="odt-logo-card">
+                                <img src="./assets/odt-logo.png" alt="One Daihatsu Tournament Logo" class="odt-logo-img" />
+                                <div class="odt-logo-title">ONE DAIHATSU TOURNAMENT</div>
+                            </div>
+                        </section>
+                    </div>
                 `;
             }
 
