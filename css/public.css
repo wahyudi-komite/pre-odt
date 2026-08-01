@@ -3242,23 +3242,45 @@ body.area-fullscreen-restored-mode {
     }
 }
 
-/* Fun Game area in fullscreen */
-.area-section.area-fun-game:fullscreen .fun-game-container {
-    max-width: 1200px;
-    margin: 0 auto;
+/* Fun Game area in fullscreen (native & restored) */
+.area-section.area-fun-game:fullscreen .fun-game-container,
+.area-section.area-fun-game.area-fullscreen-restored .fun-game-container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 16px 24px;
+    margin: 0;
 }
 
-.area-section.area-fun-game:fullscreen .fg-table {
-    font-size: 16px;
+.area-section.area-fun-game:fullscreen .fg-table-wrapper,
+.area-section.area-fun-game.area-fullscreen-restored .fg-table-wrapper {
+    overflow-x: auto;
 }
 
-.area-section.area-fun-game:fullscreen .fg-rank-badge {
-    width: 32px;
-    height: 32px;
-    font-size: 14px;
+.area-section.area-fun-game:fullscreen .fg-table,
+.area-section.area-fun-game.area-fullscreen-restored .fg-table {
+    font-size: clamp(12px, 1vw, 16px);
 }
 
-.area-section.area-fun-game:fullscreen .fg-podium-team {
+.area-section.area-fun-game:fullscreen .fg-table thead th,
+.area-section.area-fun-game.area-fullscreen-restored .fg-table thead th {
+    font-size: clamp(10px, 0.8vw, 13px);
+    padding: 8px 4px;
+}
+
+.area-section.area-fun-game:fullscreen .fg-row td,
+.area-section.area-fun-game.area-fullscreen-restored .fg-row td {
+    padding: 10px 6px;
+}
+
+.area-section.area-fun-game:fullscreen .fg-rank-badge,
+.area-section.area-fun-game.area-fullscreen-restored .fg-rank-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+}
+
+.area-section.area-fun-game:fullscreen .fg-podium-team,
+.area-section.area-fun-game.area-fullscreen-restored .fg-podium-team {
     font-size: 18px;
 }
 
