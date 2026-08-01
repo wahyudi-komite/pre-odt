@@ -1201,6 +1201,7 @@
                 const savedArea = areas.find(a => a.id === lastAreaId);
                 if (savedArea) {
                     currentArea = savedArea;
+                    isFunGameArea = savedArea.area_number === APP_CONFIG.funGameAreaNumber;
                     removeAllChannels();
                     await loadAreaData(savedArea.id);
                     const mChannel = subscribeMatches([savedArea.id], (payload) => {
