@@ -817,8 +817,8 @@ body.public-page::before {
 }
 
 .area-summary-panel {
-    grid-column: 4 / span 2;
-    grid-row: 3;
+    grid-column: 4 / span 2 !important;
+    grid-row: 3 !important;
     position: relative;
     margin: 0;
     padding: 12px 14px;
@@ -869,8 +869,8 @@ body.public-page::before {
 }
 
 .odt-logo-panel {
-    grid-column: 6 / span 1;
-    grid-row: 3;
+    grid-column: 6 / span 1 !important;
+    grid-row: 3 !important;
     position: relative;
     margin: 0;
     width: 100%;
@@ -1031,8 +1031,8 @@ body.public-page::before {
 }
 
 .area-section[data-area-order="7"] {
-    grid-column: 1 / span 3;
-    grid-row: 3;
+    grid-column: 1 / span 3 !important;
+    grid-row: 3 !important;
 }
 
 #areas-container>.area-section:only-child,
