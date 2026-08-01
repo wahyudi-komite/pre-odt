@@ -1191,7 +1191,11 @@
                     tournament = await fetchTournament("pre-one-day-turnament-kep");
                 }
 
-                areas = await fetchAreas(tournament.id);
+                areas = (await fetchAreas(tournament.id)).map(area => {
+                    if (area.area_number === 1) return { ...area, name: "FUTSAL" };
+                    if (area.area_number === APP_CONFIG.funGameAreaNumber) return { ...area, name: "FUN GAMES", isFunGame: true };
+                    return area;
+                });
 
                 const lastAreaId = localStorage.getItem("gfy_last_area");
                 const savedArea = areas.find(a => a.id === lastAreaId);
