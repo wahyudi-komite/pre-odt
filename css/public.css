@@ -2841,6 +2841,13 @@ body.area-fullscreen-restored-mode {
     gap: 24px;
 }
 
+.fg-tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
 /* Batch Section */
 .fg-batch-section {
     background: rgba(255, 255, 255, 0.03);

@@ -38,25 +38,23 @@ export function renderFunGame(area, teams, entries) {
     const container = document.createElement("div");
     container.className = "fun-game-container";
 
+    const tablesGrid = document.createElement("div");
+    tablesGrid.className = "fg-tables-grid";
+
     // Batch 1 Table
-    container.appendChild(buildBatchSection("BATCH 1", "B-1", batch1, teamMap, true));
+    tablesGrid.appendChild(buildBatchSection("BATCH 1", "B-1", batch1, teamMap, true));
 
     // Batch 2 Table
-    container.appendChild(buildBatchSection("BATCH 2", "B-2", batch2, teamMap, true));
+    tablesGrid.appendChild(buildBatchSection("BATCH 2", "B-2", batch2, teamMap, true));
 
-    // Final Table (if exists)
+    // Final Table (Always rendered)
+    tablesGrid.appendChild(buildBatchSection("FINAL", "FINAL", finalEntries, teamMap, false));
+
+    container.appendChild(tablesGrid);
+
+    // Podium section
     if (finalEntries.length > 0) {
-        container.appendChild(buildBatchSection("FINAL", "FINAL", finalEntries, teamMap, false));
         container.appendChild(buildFunGamePodium(finalEntries, teamMap));
-    } else {
-        const pending = document.createElement("div");
-        pending.className = "fg-final-pending";
-        pending.innerHTML = `
-            <div class="fg-final-pending-icon">🏆</div>
-            <div class="fg-final-pending-text">FINAL</div>
-            <div class="fg-final-pending-sub">Menunggu hasil Batch 1 & Batch 2</div>
-        `;
-        container.appendChild(pending);
     }
 
     return container;
