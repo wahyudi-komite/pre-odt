@@ -209,7 +209,7 @@
             const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
             if (!section) return;
 
-            const oldContainer = section.querySelector(".bracket-svg-container, .empty-bracket");
+            const oldContainer = section.querySelector(".bracket-svg-container, .empty-bracket, .fun-game-container");
             if (oldContainer) oldContainer.remove();
             renderBracketSection(areaId);
         }
