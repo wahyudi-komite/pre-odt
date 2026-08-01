@@ -59,6 +59,12 @@ export function subscribeAll(callback) {
         (payload) => callback("teams", payload)
     );
 
+    channel.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "fun_game_entries" },
+        (payload) => callback("fun_game_entries", payload)
+    );
+
     channel.subscribe();
     activeChannels.push(channel);
     return channel;

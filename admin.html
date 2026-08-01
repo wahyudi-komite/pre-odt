@@ -25,7 +25,8 @@
         import {
             fetchTournament, fetchAreas, fetchTeams, fetchMatches,
             fetchAllTeams, fetchAllMatches, fetchAuditLogs,
-            saveMatchResult, resetMatchResult, updateTeamName, resetArea
+            saveMatchResult, resetMatchResult, updateTeamName, resetArea,
+            fetchFunGameEntries, saveFunGameBatch, promoteFunGameFinalists, resetFunGame
         } from "./js/data-service.js";
         import { subscribeMatches, subscribeTeams, unsubscribeAll } from "./js/realtime-service.js";
         import {
@@ -46,6 +47,8 @@
         let activeChannels = [];
         let session = null;
         let lightMode = false;
+        let funGameEntries = [];
+        let isFunGameArea = false;
 
         const root = document.getElementById("app");
 
@@ -201,6 +204,7 @@
             }
 
             currentArea = areas.find(a => a.id === areaId);
+            isFunGameArea = currentArea && currentArea.area_number === APP_CONFIG.funGameAreaNumber;
             localStorage.setItem("gfy_last_area", areaId);
 
             removeAllChannels();
@@ -251,6 +255,18 @@
                     matchVersions[m.id] = m.version;
                 }
                 auditLogs = [];
+
+                // Load Fun Game entries if applicable
+                if (isFunGameArea) {
+                    try {
+                        funGameEntries = await fetchFunGameEntries(areaId);
+                    } catch (e) {
+                        console.warn("Fun Game entries not loaded:", e.message);
+                        funGameEntries = [];
+                    }
+                } else {
+                    funGameEntries = [];
+                }
 
                 renderAdminDashboard();
                 renderScoreTab();
@@ -320,15 +336,25 @@
             });
 
             switch (tab) {
-                case "score": renderScoreTab(); break;
+                case "score":
+                    if (isFunGameArea) renderFunGameScoreTab();
+                    else renderScoreTab();
+                    break;
                 case "teams": renderTeamsTab(); break;
                 case "history": renderHistoryTab(); break;
-                case "settings": renderSettingsTab(); break;
+                case "settings":
+                    if (isFunGameArea) renderFunGameSettingsTab();
+                    else renderSettingsTab();
+                    break;
             }
         };
 
         // --- Score Tab ---
         function renderScoreTab() {
+            if (isFunGameArea) {
+                renderFunGameScoreTab();
+                return;
+            }
             const el = document.getElementById("tab-content");
             if (!el) return;
 

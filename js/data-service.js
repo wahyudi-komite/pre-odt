@@ -95,3 +95,36 @@ export async function resetArea(params) {
     if (error) throw error;
     return data;
 }
+
+// --- Fun Game ---
+
+export async function fetchFunGameEntries(areaId) {
+    const { data, error } = await supabase
+        .from("fun_game_entries")
+        .select("*")
+        .eq("area_id", areaId)
+        .order("phase", { ascending: true })
+        .order("total_points", { ascending: false });
+    if (error) throw error;
+    return data;
+}
+
+export async function saveFunGameBatch(params) {
+    const { data, error } = await supabase.rpc("save_fun_game_batch", params);
+    if (error) throw error;
+    if (data && data.ok === false) throw new Error(data.message || "Gagal menyimpan.");
+    return data;
+}
+
+export async function promoteFunGameFinalists(params) {
+    const { data, error } = await supabase.rpc("promote_fun_game_finalists", params);
+    if (error) throw error;
+    if (data && data.ok === false) throw new Error(data.message || "Gagal promote finalis.");
+    return data;
+}
+
+export async function resetFunGame(params) {
+    const { data, error } = await supabase.rpc("reset_fun_game", params);
+    if (error) throw error;
+    return data;
+}

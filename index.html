@@ -27,10 +27,12 @@
         import { APP_CONFIG } from "./js/config.js";
         import { supabase } from "./js/supabase-client.js";
         import {
-            fetchTournament, fetchAreas, fetchAllTeams, fetchAllMatches
+            fetchTournament, fetchAreas, fetchAllTeams, fetchAllMatches,
+            fetchFunGameEntries
         } from "./js/data-service.js";
         import { subscribeAll, unsubscribeAll } from "./js/realtime-service.js";
         import { renderBracket } from "./js/bracket-engine.js";
+        import { renderFunGame } from "./js/fun-game-engine.js";
         import {
             formatTimeWIB, escapeHtml
         } from "./js/utils.js";
@@ -47,6 +49,7 @@
         let teams = [];
         let matches = [];
         let allMatches = {};
+        let allFunGameEntries = {};
         let allTeams = {};
         let filterArea = "all";
         let filterStatus = "all";
@@ -84,9 +87,11 @@
                     tournament = await fetchTournament("pre-one-day-turnament-kep");
                 }
 
-                areas = (await fetchAreas(tournament.id)).map(area =>
-                    area.area_number === 1 ? { ...area, name: "FUTSAL" } : area
-                );
+                areas = (await fetchAreas(tournament.id)).map(area => {
+                    if (area.area_number === 1) return { ...area, name: "FUTSAL" };
+                    if (area.area_number === APP_CONFIG.funGameAreaNumber) return { ...area, name: "FUN GAME", isFunGame: true };
+                    return area;
+                });
                 const areaIds = areas.map(a => a.id);
                 teams = await fetchAllTeams(areaIds);
                 matches = await fetchAllMatches(areaIds);
@@ -95,6 +100,18 @@
                 for (const m of matches) {
                     if (!allMatches[m.area_id]) allMatches[m.area_id] = [];
                     allMatches[m.area_id].push(m);
+                }
+
+                // Fetch Fun Game entries
+                const funGameArea = areas.find(a => a.isFunGame);
+                if (funGameArea) {
+                    try {
+                        const fgEntries = await fetchFunGameEntries(funGameArea.id);
+                        allFunGameEntries[funGameArea.id] = fgEntries;
+                    } catch (e) {
+                        console.warn("Fun Game entries not loaded (table may not exist yet):", e.message);
+                        allFunGameEntries[funGameArea.id] = [];
+                    }
                 }
 
                 lastUpdate = new Date();
@@ -119,8 +136,30 @@
                         allMatches[m.area_id] = allMatches[m.area_id].filter(x => x.id !== m.id);
                     }
                 }
+                if (table === "fun_game_entries" && payload.old) {
+                    const e = payload.old;
+                    if (allFunGameEntries[e.area_id]) {
+                        allFunGameEntries[e.area_id] = allFunGameEntries[e.area_id].filter(x => x.id !== e.id);
+                    }
+                }
                 lastUpdate = new Date();
                 renderFull();
+                return;
+            }
+
+            if (table === "fun_game_entries") {
+                const e = payload.new;
+                if (e) {
+                    if (!allFunGameEntries[e.area_id]) allFunGameEntries[e.area_id] = [];
+                    const idx = allFunGameEntries[e.area_id].findIndex(x => x.id === e.id);
+                    if (idx >= 0) allFunGameEntries[e.area_id][idx] = e;
+                    else allFunGameEntries[e.area_id].push(e);
+                }
+                lastUpdate = new Date();
+                const funGameArea = areas.find(a => a.isFunGame);
+                if (funGameArea) redrawAreaBracket(funGameArea.id);
+                renderChampions();
+                updateLastUpdate();
                 return;
             }
 
@@ -249,6 +288,40 @@
 
             let rows = "";
             for (const area of areas) {
+                // Fun Game area: derive champions from fun_game_entries final phase
+                if (area.isFunGame) {
+                    const fgEntries = allFunGameEntries[area.id] || [];
+                    const finalEntries = fgEntries
+                        .filter(e => e.phase === "final")
+                        .sort((a, b) => {
+                            if (a.final_rank && b.final_rank) return a.final_rank - b.final_rank;
+                            return (b.total_points || 0) - (a.total_points || 0);
+                        });
+                    const batchEntries = fgEntries.filter(e => e.phase !== "final");
+                    const totalFg = batchEntries.length + finalEntries.length;
+                    const filledFg = batchEntries.filter(e => e.tt_wins > 0 || e.sarung_rank || e.bola_rank).length
+                        + finalEntries.filter(e => e.tt_wins > 0 || e.sarung_rank || e.bola_rank).length;
+                    const progressFg = totalFg > 0 ? Math.round((filledFg / totalFg) * 100) : 0;
+
+                    const fgChamp = finalEntries.length > 0 && finalEntries[0] ? allTeams[finalEntries[0].team_id] : null;
+                    const fgRunner = finalEntries.length > 1 && finalEntries[1] ? allTeams[finalEntries[1].team_id] : null;
+                    const fgThird = finalEntries.length > 2 && finalEntries[2] ? allTeams[finalEntries[2].team_id] : null;
+
+                    rows += `
+                        <tr>
+                            <td><strong>${escapeHtml(area.name)}</strong></td>
+                            <td class="${fgChamp ? 'champion-gold' : ''}">${fgChamp ? escapeHtml(fgChamp.name) : 'Belum Ditentukan'}</td>
+                            <td class="${fgRunner ? 'champion-silver' : ''}">${fgRunner ? escapeHtml(fgRunner.name) : 'Belum Ditentukan'}</td>
+                            <td class="${fgThird ? 'champion-bronze' : ''}">${fgThird ? escapeHtml(fgThird.name) : 'Belum Ditentukan'}</td>
+                            <td>
+                                <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${progressFg}%"></div></div>
+                                ${progressFg}%
+                            </td>
+                        </tr>
+                    `;
+                    continue;
+                }
+
                 const areaMatches = allMatches[area.id] || [];
                 const finished = areaMatches.filter(m => m.status === "finished").length;
                 const progress = Math.round((finished / 8) * 100);
@@ -332,8 +405,19 @@
                 const finished = areaMatches.filter(m => m.status === "finished").length;
                 const progress = Math.round((finished / 8) * 100);
 
+                // Fun Game area: different progress calculation
+                let progressLabel;
+                if (area.isFunGame) {
+                    const fgEntries = allFunGameEntries[area.id] || [];
+                    const filled = fgEntries.filter(e => e.tt_wins > 0 || e.sarung_rank || e.bola_rank).length;
+                    const fgProgress = fgEntries.length > 0 ? Math.round((filled / fgEntries.length) * 100) : 0;
+                    progressLabel = `${filled}/${fgEntries.length} terisi - ${fgProgress}%`;
+                } else {
+                    progressLabel = `${finished}/8 selesai - ${progress}%`;
+                }
+
                 html += `
-                    <section class="area-section" data-area-id="${area.id}" data-area-order="${areaIndex + 1}" style="--area-progress:${progress}%">
+                    <section class="area-section ${area.isFunGame ? 'area-fun-game' : ''}" data-area-id="${area.id}" data-area-order="${areaIndex + 1}" style="--area-progress:${progress}%">
                         <div class="area-header">
                             <div class="area-title-group">
                                 <span class="area-seed">${String(areaIndex + 1).padStart(2, "0")}</span>
@@ -342,7 +426,7 @@
                                 </div>
                             </div>
                             <div class="area-header-actions">
-                                <span class="area-progress">${finished}/8 selesai - ${progress}%</span>
+                                <span class="area-progress">${progressLabel}</span>
                                 <button type="button" class="area-fullscreen-btn" onclick="window.handleAreaFullscreen('${area.id}')" title="Fullscreen ${escapeHtml(area.name)}" aria-label="Fullscreen ${escapeHtml(area.name)}">
                                     <span class="area-fullscreen-open">FULL</span>
                                     <span class="area-fullscreen-close">EXIT</span>
@@ -380,6 +464,18 @@
             const section = document.querySelector(`.area-section[data-area-id="${areaId}"]`);
             if (!section) return;
 
+            const area = areas.find(a => a.id === areaId);
+            if (!area) return;
+
+            // Fun Game area: render point table instead of bracket
+            if (area.isFunGame) {
+                const areaTeams = teams.filter(t => t.area_id === areaId);
+                const fgEntries = allFunGameEntries[areaId] || [];
+                const funGameEl = renderFunGame(area, areaTeams, fgEntries);
+                section.appendChild(funGameEl);
+                return;
+            }
+
             const areaTeams = teams.filter(t => t.area_id === areaId);
             const areaMatches = allMatches[areaId] || [];
 
@@ -396,11 +492,10 @@
                 );
             }
 
-            const area = areas.find(a => a.id === areaId);
-            if (area && filtered.length > 0) {
+            if (filtered.length > 0) {
                 const bracketEl = renderBracket(area, areaTeams, filtered);
                 section.appendChild(bracketEl);
-            } else if (area) {
+            } else {
                 const empty = document.createElement("div");
                 empty.className = "empty-bracket";
                 empty.textContent = "Tidak ada pertandingan yang cocok dengan filter";
