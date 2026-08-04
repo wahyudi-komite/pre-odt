@@ -3378,7 +3378,8 @@ body.area-fullscreen-restored-mode {
     }
 
     .bracket {
-        min-width: 650px !important;
+        min-width: 900px !important;
+        padding-right: 16px !important;
     }
 
     .summary-stats-grid {
