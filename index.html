@@ -303,9 +303,11 @@
                         + finalEntries.filter(e => e.tt_wins > 0 || e.sarung_rank || e.bola_rank).length;
                     const progressFg = totalFg > 0 ? Math.round((filledFg / totalFg) * 100) : 0;
 
-                    const fgChamp = finalEntries.length > 0 && finalEntries[0] ? allTeams[finalEntries[0].team_id] : null;
-                    const fgRunner = finalEntries.length > 1 && finalEntries[1] ? allTeams[finalEntries[1].team_id] : null;
-                    const fgThird = finalEntries.length > 2 && finalEntries[2] ? allTeams[finalEntries[2].team_id] : null;
+                    const isFinalPlayed = finalEntries.some(e => e.tt_wins > 0 || e.sarung_rank || e.bola_rank || e.final_rank);
+
+                    const fgChamp = isFinalPlayed && finalEntries.length > 0 && finalEntries[0] ? allTeams[finalEntries[0].team_id] : null;
+                    const fgRunner = isFinalPlayed && finalEntries.length > 1 && finalEntries[1] ? allTeams[finalEntries[1].team_id] : null;
+                    const fgThird = isFinalPlayed && finalEntries.length > 2 && finalEntries[2] ? allTeams[finalEntries[2].team_id] : null;
 
                     rows += `
                         <tr>

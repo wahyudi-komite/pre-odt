@@ -154,9 +154,11 @@ function buildFunGamePodium(finalEntries, teamMap) {
         { place: "Juara 4", cls: "fourth", rank: 4 }
     ];
 
+    const isFinalPlayed = finalEntries.some(e => e.tt_wins > 0 || e.sarung_rank || e.bola_rank || e.final_rank);
+
     for (const item of items) {
         const entry = finalEntries.find(e => e.final_rank === item.rank)
-            || finalEntries[item.rank - 1];
+            || (isFinalPlayed ? finalEntries[item.rank - 1] : null);
 
         const team = entry ? teamMap[entry.team_id] : null;
 
